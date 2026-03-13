@@ -5,7 +5,18 @@ import { sendPushToMultipleDevices } from "@/lib/push";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const authHeader = request.headers.get('authorization');
+  
+  // Verifica se a chamada vem do Vercel Cron ou se tem o segredo correto
+  // Em desenvolvimento local, permitimos sem segredo para facilitar
+  const isVercelCron = authHeader === `Bearer ${process.env.CRON_SECRET}`;
+  const isDevelopment = process.env.NODE_ENV === 'development';
+  
+  // Se quiser proteger em produção, descomente a linha abaixo e adicione CRON_SECRET no .env
+  // if (!isVercelCron && !isDevelopment) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   const now = new Date().toISOString();
   console.log(`[Worker] Iniciando processamento de tarefas em ${now}`);
 

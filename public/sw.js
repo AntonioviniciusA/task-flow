@@ -82,17 +82,18 @@ self.addEventListener("push", (event) => {
 
   const options = {
     body: data.body,
-    icon: "/icon-light-32x32.png",
-    badge: "/icon-light-32x32.png",
+    icon: data.icon || "/icon-light-32x32.png",
+    badge: data.badge || "/icon-light-32x32.png",
+    image: data.image,
     vibrate: [200, 100, 200],
-    tag: data.taskId || "task-notification",
+    tag: data.tag || data.taskId || "task-notification",
     renotify: true,
     requireInteraction: true,
     data: {
       taskId: data.taskId,
       url: data.url || "/dashboard",
     },
-    actions: [
+    actions: data.actions || [
       {
         action: "complete",
         title: "Concluir",
@@ -118,48 +119,61 @@ self.addEventListener("notificationclick", (event) => {
   const action = event.action;
   const taskId = notification.data?.taskId;
 
+  console.log("[Service Worker] Clique na notificação:", { action, taskId });
+
   notification.close();
 
-  if (action === "complete" && taskId) {
-    // Marcar tarefa como concluída
+  if ((action === "complete" || action === "snooze") && taskId) {
+    // Chamar a API de ação da tarefa
     event.waitUntil(
-      fetch(`/api/tasks/${taskId}`, {
-        method: "PATCH",
+      fetch(`/api/tasks/${taskId}/action`, {
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ status: "completed" }),
+        body: JSON.stringify({ action }),
       })
-        .then(() => {
-          // Mostrar notificação de confirmação
-          return self.registration.showNotification("Tarefa Concluída", {
-            body: "A tarefa foi marcada como concluída.",
+        .then(async (response) => {
+          if (!response.ok) throw new Error("Falha na API");
+
+          const title =
+            action === "complete" ? "Tarefa Concluída" : "Tarefa Adiada";
+          const body =
+            action === "complete"
+              ? "A tarefa foi marcada como concluída."
+              : "Lembrete adiado por 15 minutos.";
+
+          return self.registration.showNotification(title, {
+            body,
             icon: "/icon-light-32x32.png",
-            tag: "confirmation",
+            tag: "action-confirmation",
           });
         })
         .catch((error) => {
-          console.error("Erro ao concluir tarefa:", error);
+          console.error("[Service Worker] Erro ao processar ação:", error);
+          // Se falhar (ex: não autenticado), abre o app
+          return clients.openWindow(
+            `/dashboard?taskId=${taskId}&action=${action}`,
+          );
         }),
     );
-  } else if (action === "snooze" && taskId) {
-    // Abrir a página para adiar a tarefa
-    event.waitUntil(clients.openWindow(`/tasks/${taskId}?snooze=true`));
   } else {
-    // Clique na notificação sem ação específica - abrir o app
+    // Clique na notificação sem ação específica ou ação de abrir - abrir o app
     event.waitUntil(
       clients
         .matchAll({ type: "window", includeUncontrolled: true })
         .then((windowClients) => {
-          // Se já há uma janela aberta, focar nela
+          const urlToOpen = notification.data?.url || "/dashboard";
+
+          // Se já há uma janela aberta no dashboard, focar nela
           for (const client of windowClients) {
-            if (client.url === "/" && "focus" in client) {
+            if (client.url.includes("/dashboard") && "focus" in client) {
               return client.focus();
             }
           }
           // Caso contrário, abrir uma nova janela
           if (clients.openWindow) {
-            return clients.openWindow(notification.data?.url || "/");
+            return clients.openWindow(urlToOpen);
           }
         }),
     );

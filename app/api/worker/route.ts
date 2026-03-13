@@ -56,6 +56,17 @@ export async function GET() {
           taskId: taskId,
           url: `/dashboard`,
           urgency: task.priority === 'high' ? 'high' : 'medium',
+          tag: taskId,
+          actions: [
+            {
+              action: 'complete',
+              title: '✅ Concluir',
+            },
+            {
+              action: 'snooze',
+              title: '⏰ Adiar 15min',
+            }
+          ]
         });
         console.log(`[Worker] Notificações enviadas para ${subscriptions.length} dispositivos.`);
       } else {

@@ -22,6 +22,15 @@ export interface PushPayload {
   taskId?: string;
   url?: string;
   urgency?: 'low' | 'medium' | 'high';
+  icon?: string;
+  badge?: string;
+  image?: string;
+  tag?: string;
+  actions?: Array<{
+    action: string;
+    title: string;
+    icon?: string;
+  }>;
 }
 
 export async function sendPushNotification(

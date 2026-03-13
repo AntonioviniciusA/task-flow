@@ -1,4 +1,3 @@
-import 'dotenv/config'
 import { createClient } from '@libsql/client'
 import { readFileSync } from 'fs'
 import { join } from 'path'

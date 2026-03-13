@@ -1,7 +1,7 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { useSWRConfig } from 'swr'
+import { useState } from "react";
+import { useSWRConfig } from "swr";
 import {
   Dialog,
   DialogContent,
@@ -9,52 +9,61 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { Switch } from '@/components/ui/switch'
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
-import { Field, FieldLabel, FieldGroup } from '@/components/ui/field'
-import { Spinner } from '@/components/ui/spinner'
-import { toast } from 'sonner'
-import type { CreateTaskInput, TaskPriority } from '@/lib/types'
+} from "@/components/ui/select";
+import { Field, FieldLabel, FieldGroup } from "@/components/ui/field";
+import { Spinner } from "@/components/ui/spinner";
+import { toast } from "sonner";
+import type { CreateTaskInput, TaskPriority, TaskFrequency } from "@/lib/types";
 
 interface CreateTaskDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
-export function CreateTaskDialog({ open, onOpenChange }: CreateTaskDialogProps) {
-  const { mutate } = useSWRConfig()
-  const [isLoading, setIsLoading] = useState(false)
-  const [title, setTitle] = useState('')
-  const [description, setDescription] = useState('')
-  const [dueDate, setDueDate] = useState('')
-  const [dueTime, setDueTime] = useState('')
-  const [priority, setPriority] = useState<TaskPriority>('medium')
-  const [notificationEnabled, setNotificationEnabled] = useState(true)
-  const [minutesBefore, setMinutesBefore] = useState('15')
+export function CreateTaskDialog({
+  open,
+  onOpenChange,
+}: CreateTaskDialogProps) {
+  const { mutate } = useSWRConfig();
+  const [isLoading, setIsLoading] = useState(false);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [dueDate, setDueDate] = useState("");
+  const [dueTime, setDueTime] = useState("");
+  const [frequency, setFrequency] = useState<TaskFrequency>("once");
+  const [frequencyDayOfWeek, setFrequencyDayOfWeek] = useState<string>("0");
+  const [frequencyDayOfMonth, setFrequencyDayOfMonth] = useState<string>("1");
+  const [notificationTime, setNotificationTime] = useState("");
+  const [priority, setPriority] = useState<TaskPriority>("medium");
+  const [notificationEnabled, setNotificationEnabled] = useState(true);
 
   function resetForm() {
-    setTitle('')
-    setDescription('')
-    setDueDate('')
-    setDueTime('')
-    setPriority('medium')
-    setNotificationEnabled(true)
-    setMinutesBefore('15')
+    setTitle("");
+    setDescription("");
+    setDueDate("");
+    setDueTime("");
+    setFrequency("once");
+    setFrequencyDayOfWeek("0");
+    setFrequencyDayOfMonth("1");
+    setNotificationTime("");
+    setPriority("medium");
+    setNotificationEnabled(true);
   }
 
   async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setIsLoading(true)
+    e.preventDefault();
+    setIsLoading(true);
 
     try {
       const payload: CreateTaskInput = {
@@ -62,30 +71,35 @@ export function CreateTaskDialog({ open, onOpenChange }: CreateTaskDialogProps) 
         description: description || undefined,
         due_date: dueDate || undefined,
         due_time: dueTime || undefined,
+        frequency,
+        frequency_day_of_week:
+          frequency === "weekly" ? parseInt(frequencyDayOfWeek) : undefined,
+        frequency_day_of_month:
+          frequency === "monthly" ? parseInt(frequencyDayOfMonth) : undefined,
+        notification_time: notificationTime || undefined,
         priority,
         notification_enabled: notificationEnabled,
-        notification_minutes_before: parseInt(minutesBefore),
-      }
+      };
 
-      const response = await fetch('/api/tasks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
-      })
+      });
 
       if (response.ok) {
-        toast.success('Tarefa criada com sucesso!')
-        mutate('/api/tasks')
-        resetForm()
-        onOpenChange(false)
+        toast.success("Tarefa criada com sucesso!");
+        mutate("/api/tasks");
+        resetForm();
+        onOpenChange(false);
       } else {
-        const data = await response.json()
-        toast.error(data.error || 'Erro ao criar tarefa')
+        const data = await response.json();
+        toast.error(data.error || "Erro ao criar tarefa");
       }
     } catch {
-      toast.error('Erro ao criar tarefa')
+      toast.error("Erro ao criar tarefa");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
   }
 
@@ -114,7 +128,9 @@ export function CreateTaskDialog({ open, onOpenChange }: CreateTaskDialogProps) 
             </Field>
 
             <Field>
-              <FieldLabel htmlFor="description">Descrição (opcional)</FieldLabel>
+              <FieldLabel htmlFor="description">
+                Descrição (opcional)
+              </FieldLabel>
               <Textarea
                 id="description"
                 placeholder="Detalhes adicionais..."
@@ -138,12 +154,94 @@ export function CreateTaskDialog({ open, onOpenChange }: CreateTaskDialogProps) 
               </Field>
 
               <Field>
-                <FieldLabel htmlFor="dueTime">Horário</FieldLabel>
+                <FieldLabel htmlFor="dueTime">Horário Limite</FieldLabel>
                 <Input
                   id="dueTime"
                   type="time"
                   value={dueTime}
                   onChange={(e) => setDueTime(e.target.value)}
+                  disabled={isLoading}
+                />
+              </Field>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <Field>
+                <FieldLabel htmlFor="frequency">Frequência</FieldLabel>
+                <Select
+                  value={frequency}
+                  onValueChange={(v) => setFrequency(v as TaskFrequency)}
+                  disabled={isLoading}
+                >
+                  <SelectTrigger id="frequency">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="once">Uma vez</SelectItem>
+                    <SelectItem value="daily">Diária</SelectItem>
+                    <SelectItem value="weekly">Semanal</SelectItem>
+                    <SelectItem value="monthly">Mensal</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+
+              {frequency === "weekly" && (
+                <Field>
+                  <FieldLabel htmlFor="dayOfWeek">Dia da Semana</FieldLabel>
+                  <Select
+                    value={frequencyDayOfWeek}
+                    onValueChange={setFrequencyDayOfWeek}
+                    disabled={isLoading}
+                  >
+                    <SelectTrigger id="dayOfWeek">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0">Domingo</SelectItem>
+                      <SelectItem value="1">Segunda-feira</SelectItem>
+                      <SelectItem value="2">Terça-feira</SelectItem>
+                      <SelectItem value="3">Quarta-feira</SelectItem>
+                      <SelectItem value="4">Quinta-feira</SelectItem>
+                      <SelectItem value="5">Sexta-feira</SelectItem>
+                      <SelectItem value="6">Sábado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
+              )}
+
+              {frequency === "monthly" && (
+                <Field>
+                  <FieldLabel htmlFor="dayOfMonth">Dia do Mês</FieldLabel>
+                  <Select
+                    value={frequencyDayOfMonth}
+                    onValueChange={setFrequencyDayOfMonth}
+                    disabled={isLoading}
+                  >
+                    <SelectTrigger id="dayOfMonth">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 31 }, (_, i) => i + 1).map(
+                        (day) => (
+                          <SelectItem key={day} value={day.toString()}>
+                            Dia {day}
+                          </SelectItem>
+                        ),
+                      )}
+                    </SelectContent>
+                  </Select>
+                </Field>
+              )}
+
+              <Field>
+                <FieldLabel htmlFor="notificationTime">
+                  Hora da Notificação
+                </FieldLabel>
+                <Input
+                  id="notificationTime"
+                  type="time"
+                  value={notificationTime}
+                  onChange={(e) => setNotificationTime(e.target.value)}
                   disabled={isLoading}
                 />
               </Field>
@@ -183,28 +281,6 @@ export function CreateTaskDialog({ open, onOpenChange }: CreateTaskDialogProps) 
                 disabled={isLoading}
               />
             </Field>
-
-            {notificationEnabled && (
-              <Field>
-                <FieldLabel htmlFor="minutesBefore">Minutos antes</FieldLabel>
-                <Select
-                  value={minutesBefore}
-                  onValueChange={setMinutesBefore}
-                  disabled={isLoading}
-                >
-                  <SelectTrigger id="minutesBefore">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="5">5 minutos</SelectItem>
-                    <SelectItem value="10">10 minutos</SelectItem>
-                    <SelectItem value="15">15 minutos</SelectItem>
-                    <SelectItem value="30">30 minutos</SelectItem>
-                    <SelectItem value="60">1 hora</SelectItem>
-                  </SelectContent>
-                </Select>
-              </Field>
-            )}
           </FieldGroup>
 
           <DialogFooter>
@@ -223,12 +299,12 @@ export function CreateTaskDialog({ open, onOpenChange }: CreateTaskDialogProps) 
                   Criando...
                 </>
               ) : (
-                'Criar Tarefa'
+                "Criar Tarefa"
               )}
             </Button>
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

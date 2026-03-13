@@ -1,16 +1,16 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+import { useState } from "react";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,10 +20,10 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
-import { cn } from '@/lib/utils'
-import { toast } from 'sonner'
-import type { Task } from '@/lib/types'
+} from "@/components/ui/alert-dialog";
+import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import type { Task } from "@/lib/types";
 import {
   MoreVertical,
   Check,
@@ -34,122 +34,131 @@ import {
   BellOff,
   Calendar,
   Flag,
-} from 'lucide-react'
-import { EditTaskDialog } from './edit-task-dialog'
+} from "lucide-react";
+import { EditTaskDialog } from "./edit-task-dialog";
 
 interface TaskCardProps {
-  task: Task
-  onUpdate: () => void
+  task: Task;
+  onUpdate: () => void;
 }
 
 const priorityConfig = {
-  low: { label: 'Baixa', color: 'bg-muted text-muted-foreground' },
-  medium: { label: 'Média', color: 'bg-warning/20 text-warning-foreground' },
-  high: { label: 'Alta', color: 'bg-destructive/20 text-destructive' },
-}
+  low: { label: "Baixa", color: "bg-muted text-muted-foreground" },
+  medium: { label: "Média", color: "bg-warning/20 text-warning-foreground" },
+  high: { label: "Alta", color: "bg-destructive/20 text-destructive" },
+};
+
+const frequencyLabels: Record<string, string> = {
+  once: "Uma vez",
+  daily: "Diária",
+  weekly: "Semanal",
+  monthly: "Mensal",
+};
+
+const weekDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
 export function TaskCard({ task, onUpdate }: TaskCardProps) {
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
-  const [showEditDialog, setShowEditDialog] = useState(false)
-  const [isUpdating, setIsUpdating] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
 
-  const isCompleted = task.status === 'completed'
-  const priority = priorityConfig[task.priority]
+  const isCompleted = task.status === "completed";
+  const priority = priorityConfig[task.priority];
 
   async function handleComplete() {
-    setIsUpdating(true)
+    setIsUpdating(true);
     try {
       const response = await fetch(`/api/tasks/${task.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'completed' }),
-      })
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "completed" }),
+      });
 
       if (response.ok) {
-        toast.success('Tarefa concluída!')
-        onUpdate()
+        toast.success("Tarefa concluída!");
+        onUpdate();
       } else {
-        toast.error('Erro ao atualizar tarefa')
+        toast.error("Erro ao atualizar tarefa");
       }
     } catch {
-      toast.error('Erro ao atualizar tarefa')
+      toast.error("Erro ao atualizar tarefa");
     } finally {
-      setIsUpdating(false)
+      setIsUpdating(false);
     }
   }
 
   async function handleReopen() {
-    setIsUpdating(true)
+    setIsUpdating(true);
     try {
       const response = await fetch(`/api/tasks/${task.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'pending' }),
-      })
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "pending" }),
+      });
 
       if (response.ok) {
-        toast.success('Tarefa reaberta')
-        onUpdate()
+        toast.success("Tarefa reaberta");
+        onUpdate();
       } else {
-        toast.error('Erro ao reabrir tarefa')
+        toast.error("Erro ao reabrir tarefa");
       }
     } catch {
-      toast.error('Erro ao reabrir tarefa')
+      toast.error("Erro ao reabrir tarefa");
     } finally {
-      setIsUpdating(false)
+      setIsUpdating(false);
     }
   }
 
   async function handleDelete() {
-    setIsDeleting(true)
+    setIsDeleting(true);
     try {
       const response = await fetch(`/api/tasks/${task.id}`, {
-        method: 'DELETE',
-      })
+        method: "DELETE",
+      });
 
       if (response.ok) {
-        toast.success('Tarefa excluída')
-        onUpdate()
+        toast.success("Tarefa excluída");
+        onUpdate();
       } else {
-        toast.error('Erro ao excluir tarefa')
+        toast.error("Erro ao excluir tarefa");
       }
     } catch {
-      toast.error('Erro ao excluir tarefa')
+      toast.error("Erro ao excluir tarefa");
     } finally {
-      setIsDeleting(false)
-      setShowDeleteDialog(false)
+      setIsDeleting(false);
+      setShowDeleteDialog(false);
     }
   }
 
   function formatDate(dateStr: string | null) {
-    if (!dateStr) return null
-    const date = new Date(dateStr + 'T00:00:00')
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const tomorrow = new Date(today)
-    tomorrow.setDate(tomorrow.getDate() + 1)
+    if (!dateStr) return null;
+    const date = new Date(dateStr + "T00:00:00");
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
 
-    if (date.getTime() === today.getTime()) return 'Hoje'
-    if (date.getTime() === tomorrow.getTime()) return 'Amanhã'
+    if (date.getTime() === today.getTime()) return "Hoje";
+    if (date.getTime() === tomorrow.getTime()) return "Amanhã";
 
-    return date.toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: 'short',
-    })
+    return date.toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "short",
+    });
   }
 
-  const formattedDate = formatDate(task.due_date)
+  const formattedDate = formatDate(task.due_date);
   const isOverdue =
-    task.due_date && new Date(task.due_date) < new Date() && !isCompleted
+    task.due_date && new Date(task.due_date) < new Date() && !isCompleted;
 
   return (
     <>
       <Card
         className={cn(
-          'transition-all',
-          isCompleted && 'opacity-60',
-          isOverdue && 'border-destructive/50'
+          "transition-all",
+          isCompleted && "opacity-60",
+          isOverdue && "border-destructive/50",
         )}
       >
         <CardHeader className="pb-2">
@@ -159,8 +168,9 @@ export function TaskCard({ task, onUpdate }: TaskCardProps) {
                 variant="outline"
                 size="icon"
                 className={cn(
-                  'h-6 w-6 shrink-0 rounded-full',
-                  isCompleted && 'bg-success text-success-foreground border-success'
+                  "h-6 w-6 shrink-0 rounded-full",
+                  isCompleted &&
+                    "bg-success text-success-foreground border-success",
                 )}
                 onClick={isCompleted ? handleReopen : handleComplete}
                 disabled={isUpdating}
@@ -170,8 +180,8 @@ export function TaskCard({ task, onUpdate }: TaskCardProps) {
               <div className="min-w-0 flex-1">
                 <h3
                   className={cn(
-                    'font-medium text-foreground truncate',
-                    isCompleted && 'line-through text-muted-foreground'
+                    "font-medium text-foreground truncate",
+                    isCompleted && "line-through text-muted-foreground",
                   )}
                 >
                   {task.title}
@@ -186,7 +196,11 @@ export function TaskCard({ task, onUpdate }: TaskCardProps) {
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 shrink-0"
+                >
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -221,7 +235,10 @@ export function TaskCard({ task, onUpdate }: TaskCardProps) {
 
         <CardContent className="pt-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <Badge variant="secondary" className={cn('text-xs', priority.color)}>
+            <Badge
+              variant="secondary"
+              className={cn("text-xs", priority.color)}
+            >
               <Flag className="h-3 w-3 mr-1" />
               {priority.label}
             </Badge>
@@ -230,10 +247,10 @@ export function TaskCard({ task, onUpdate }: TaskCardProps) {
               <Badge
                 variant="secondary"
                 className={cn(
-                  'text-xs',
+                  "text-xs",
                   isOverdue
-                    ? 'bg-destructive/20 text-destructive'
-                    : 'bg-muted text-muted-foreground'
+                    ? "bg-destructive/20 text-destructive"
+                    : "bg-muted text-muted-foreground",
                 )}
               >
                 <Calendar className="h-3 w-3 mr-1" />
@@ -243,14 +260,38 @@ export function TaskCard({ task, onUpdate }: TaskCardProps) {
             )}
 
             {task.notification_enabled ? (
-              <Badge variant="secondary" className="text-xs bg-primary/10 text-primary">
+              <Badge
+                variant="secondary"
+                className="text-xs bg-primary/10 text-primary"
+              >
                 <Bell className="h-3 w-3 mr-1" />
-                {task.notification_minutes_before}min antes
+                {task.notification_time
+                  ? `Às ${task.notification_time}`
+                  : "Lembrete Ativo"}
               </Badge>
             ) : (
-              <Badge variant="secondary" className="text-xs bg-muted text-muted-foreground">
+              <Badge
+                variant="secondary"
+                className="text-xs bg-muted text-muted-foreground"
+              >
                 <BellOff className="h-3 w-3 mr-1" />
                 Sem lembrete
+              </Badge>
+            )}
+
+            {task.frequency && task.frequency !== "once" && (
+              <Badge
+                variant="secondary"
+                className="text-xs bg-accent text-accent-foreground"
+              >
+                <Clock className="h-3 w-3 mr-1" />
+                {frequencyLabels[task.frequency]}
+                {task.frequency === "weekly" &&
+                  task.frequency_day_of_week !== null &&
+                  ` (${weekDays[task.frequency_day_of_week]})`}
+                {task.frequency === "monthly" &&
+                  task.frequency_day_of_month !== null &&
+                  ` (Dia ${task.frequency_day_of_month})`}
               </Badge>
             )}
           </div>
@@ -262,17 +303,20 @@ export function TaskCard({ task, onUpdate }: TaskCardProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir tarefa?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação não pode ser desfeita. A tarefa será permanentemente excluída.
+              Esta ação não pode ser desfeita. A tarefa será permanentemente
+              excluída.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting}>
+              Cancelar
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               disabled={isDeleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {isDeleting ? 'Excluindo...' : 'Excluir'}
+              {isDeleting ? "Excluindo..." : "Excluir"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -285,5 +329,5 @@ export function TaskCard({ task, onUpdate }: TaskCardProps) {
         onUpdate={onUpdate}
       />
     </>
-  )
+  );
 }

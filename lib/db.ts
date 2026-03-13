@@ -1,6 +1,4 @@
-import { createClient } from '@libsql/client';
-import dotenv from "dotenv"
-dotenv.config()
+import { createClient } from "@libsql/client";
 
 export const db = createClient({
   url: process.env.TURSO_DATABASE_URL!,
@@ -21,13 +19,20 @@ export interface Task {
   user_id: string;
   title: string;
   description: string | null;
-  notification_time: string;
-  frequency: 'once' | 'daily' | 'weekly' | 'custom';
-  frequency_config: string | null;
-  urgency: 'low' | 'medium' | 'high';
-  status: 'pending' | 'completed';
+  due_date: string | null;
+  due_time: string | null;
+  frequency: "once" | "daily" | "weekly" | "monthly";
+  frequency_day_of_week: number | null;
+  frequency_day_of_month: number | null;
+  notification_time: string | null;
+  priority: "low" | "medium" | "high";
+  status: "pending" | "in_progress" | "completed" | "cancelled";
+  notification_enabled: boolean;
+  executed: boolean;
+  scheduled_time: string | null;
   created_at: string;
   updated_at: string;
+  completed_at: string | null;
 }
 
 export interface Device {
@@ -44,7 +49,6 @@ export interface ScheduledNotification {
   id: string;
   task_id: string;
   scheduled_time: string;
-  qstash_message_id: string | null;
-  status: 'pending' | 'sent' | 'snoozed' | 'cancelled';
+  status: "pending" | "sent" | "snoozed" | "cancelled";
   created_at: string;
 }

@@ -10,7 +10,14 @@ async function handler(request: NextRequest) {
     const payload: QStashSchedulePayload = await request.json()
     const { taskId, userId, notificationType } = payload
 
-    // Fetch the task
+    if (!taskId || !userId) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid payload' },
+        { status: 400 }
+      )
+    }
+
+    // Fetch task
     const taskResult = await db.execute({
       sql: 'SELECT * FROM tasks WHERE id = ? AND user_id = ?',
       args: [taskId, userId],
@@ -18,18 +25,24 @@ async function handler(request: NextRequest) {
 
     if (taskResult.rows.length === 0) {
       console.log('Task not found:', taskId)
-      return NextResponse.json({ success: true, message: 'Task not found, skipping' })
+      return NextResponse.json({
+        success: true,
+        message: 'Task not found, skipping',
+      })
     }
 
-    const task = taskResult.rows[0] as unknown as Task
+    const task = taskResult.rows[0] as Task
 
-    // Skip if task is already completed or cancelled
+    // Skip completed or cancelled tasks
     if (task.status === 'completed' || task.status === 'cancelled') {
       console.log('Task already completed/cancelled:', taskId)
-      return NextResponse.json({ success: true, message: 'Task already handled' })
+      return NextResponse.json({
+        success: true,
+        message: 'Task already handled',
+      })
     }
 
-    // Fetch user's active devices
+    // Fetch active devices
     const devicesResult = await db.execute({
       sql: 'SELECT * FROM devices WHERE user_id = ? AND is_active = 1',
       args: [userId],
@@ -37,44 +50,48 @@ async function handler(request: NextRequest) {
 
     if (devicesResult.rows.length === 0) {
       console.log('No active devices for user:', userId)
-      return NextResponse.json({ success: true, message: 'No active devices' })
+      return NextResponse.json({
+        success: true,
+        message: 'No active devices',
+      })
     }
 
-    const devices = devicesResult.rows as unknown as Device[]
+    const devices = devicesResult.rows as Device[]
 
-    // Build notification content
+    // Notification content
     let title: string
     let body: string
-    const icon = '/icons/icon-192x192.png'
-    const badge = '/icons/icon-72x72.png'
 
     switch (notificationType) {
       case 'reminder':
         title = 'Lembrete de Tarefa'
         body = `"${task.title}" está chegando em ${task.notification_minutes_before} minutos`
         break
+
       case 'due':
         title = 'Tarefa Agendada'
         body = `"${task.title}" está marcada para agora`
         break
+
       case 'overdue':
         title = 'Tarefa Atrasada'
         body = `"${task.title}" passou do horário`
         break
+
       default:
         title = 'Notificação de Tarefa'
         body = task.title
     }
 
-    // Priority-based urgency
     const priorityLabels: Record<string, string> = {
       high: ' [ALTA PRIORIDADE]',
       medium: '',
       low: ' [baixa prioridade]',
     }
+
     body += priorityLabels[task.priority] || ''
 
-    // Send to all devices
+    // Send notifications
     const results = await Promise.allSettled(
       devices.map(async (device) => {
         const logId = nanoid()
@@ -91,26 +108,18 @@ async function handler(request: NextRequest) {
             {
               title,
               body,
-              icon,
-              badge,
-              tag: `task-${taskId}`,
-              data: {
-                taskId,
-                action: notificationType,
-                url: `/dashboard/tasks/${taskId}`,
-              },
-              actions: [
-                { action: 'complete', title: 'Concluir' },
-                { action: 'snooze', title: 'Adiar 15min' },
-              ],
-              requireInteraction: task.priority === 'high',
+              taskId: `task-${taskId}`,
+              url: `/dashboard/tasks/${taskId}`,
+              urgency: task.priority === 'high' ? 'high' : 'normal',
             }
           )
 
-          // Log successful send
           await db.execute({
-            sql: `INSERT INTO notification_logs (id, task_id, device_id, status, sent_at)
-                  VALUES (?, ?, ?, 'sent', datetime('now'))`,
+            sql: `
+              INSERT INTO notification_logs 
+              (id, task_id, device_id, status, sent_at)
+              VALUES (?, ?, ?, 'sent', datetime('now'))
+            `,
             args: [logId, taskId, device.id],
           })
 
@@ -118,14 +127,21 @@ async function handler(request: NextRequest) {
         } catch (error) {
           console.error(`Failed to send to device ${device.id}:`, error)
 
-          // Log failure
           await db.execute({
-            sql: `INSERT INTO notification_logs (id, task_id, device_id, status, error_message, sent_at)
-                  VALUES (?, ?, ?, 'failed', ?, datetime('now'))`,
-            args: [logId, taskId, device.id, error instanceof Error ? error.message : 'Unknown error'],
+            sql: `
+              INSERT INTO notification_logs 
+              (id, task_id, device_id, status, error_message, sent_at)
+              VALUES (?, ?, ?, 'failed', ?, datetime('now'))
+            `,
+            args: [
+              logId,
+              taskId,
+              device.id,
+              error instanceof Error ? error.message : 'Unknown error',
+            ],
           })
 
-          // Deactivate device if push failed permanently
+          // deactivate device if endpoint expired
           if (error instanceof Error && error.message.includes('410')) {
             await db.execute({
               sql: 'UPDATE devices SET is_active = 0 WHERE id = ?',
@@ -133,7 +149,11 @@ async function handler(request: NextRequest) {
             })
           }
 
-          return { deviceId: device.id, success: false, error }
+          return {
+            deviceId: device.id,
+            success: false,
+            error,
+          }
         }
       })
     )
@@ -148,6 +168,7 @@ async function handler(request: NextRequest) {
     })
   } catch (error) {
     console.error('QStash webhook error:', error)
+
     return NextResponse.json(
       { success: false, error: 'Internal error' },
       { status: 500 }
@@ -155,5 +176,4 @@ async function handler(request: NextRequest) {
   }
 }
 
-// Wrap handler with QStash signature verification
 export const POST = verifySignatureAppRouter(handler)

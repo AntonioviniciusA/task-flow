@@ -1,123 +1,130 @@
-import NextAuth from 'next-auth'
-import Credentials from 'next-auth/providers/credentials'
-import { compare, hash } from 'bcryptjs'
-import { nanoid } from 'nanoid'
-import { db } from './db'
-import type { User } from './types'
+import NextAuth from "next-auth";
+import Credentials from "next-auth/providers/credentials";
+import { compare, hash } from "bcryptjs";
+import { nanoid } from "nanoid";
+import { db } from "./db";
+import type { User } from "./types";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     Credentials({
-      name: 'credentials',
+      name: "credentials",
       credentials: {
-        email: { label: 'Email', type: 'email' },
-        password: { label: 'Senha', type: 'password' },
+        email: { label: "Email", type: "email" },
+        password: { label: "Senha", type: "password" },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          return null
+          return null;
         }
 
-        const email = credentials.email as string
-        const password = credentials.password as string
+        const email = credentials.email as string;
+        const password = credentials.password as string;
 
         try {
           const result = await db.execute({
-            sql: 'SELECT * FROM users WHERE email = ?',
+            sql: "SELECT * FROM users WHERE email = ?",
             args: [email],
-          })
+          });
 
           if (result.rows.length === 0) {
-            return null
+            return null;
           }
 
-          const user = result.rows[0] as unknown as User
+          const user = result.rows[0] as unknown as User;
 
-          const isValidPassword = await compare(password, user.password_hash || '')
+          const isValidPassword = await compare(
+            password,
+            user.password_hash || "",
+          );
 
           if (!isValidPassword) {
-            return null
+            return null;
           }
 
           return {
             id: user.id,
             email: user.email,
             name: user.name,
-          }
+          };
         } catch (error) {
-          console.error('Auth error:', error)
-          return null
+          console.error("Auth error:", error);
+          return null;
         }
       },
     }),
   ],
   pages: {
-    signIn: '/login',
-    error: '/login',
+    signIn: "/login",
+    error: "/login",
   },
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.id = user.id
+        token.id = user.id;
       }
-      return token
+      return token;
     },
     async session({ session, token }) {
       if (token && session.user) {
-        session.user.id = token.id as string
+        session.user.id = token.id as string;
       }
-      return session
+      return session;
     },
   },
   session: {
-    strategy: 'jwt',
+    strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60, // 30 dias
     updateAge: 24 * 60 * 60, // Atualiza o cookie a cada 24 horas
   },
+  secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
   cookies: {
     sessionToken: {
-      name: process.env.NODE_ENV === 'production' ? '__Secure-next-auth.session-token' : 'next-auth.session-token',
+      name:
+        process.env.NODE_ENV === "production"
+          ? "__Secure-next-auth.session-token"
+          : "next-auth.session-token",
       options: {
         httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
-        secure: process.env.NODE_ENV === 'production',
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
         maxAge: 30 * 24 * 60 * 60, // 30 dias
       },
     },
   },
-})
+});
 
 // Helper function to hash passwords
 export async function hashPassword(password: string): Promise<string> {
-  return hash(password, 12)
+  return hash(password, 12);
 }
 
 // Helper function to create a new user
 export async function createUser(
   email: string,
   password: string,
-  name: string
+  name: string,
 ): Promise<User | null> {
   try {
     const existingUser = await db.execute({
-      sql: 'SELECT id FROM users WHERE email = ?',
+      sql: "SELECT id FROM users WHERE email = ?",
       args: [email],
-    })
+    });
 
     if (existingUser.rows.length > 0) {
-      return null
+      return null;
     }
 
-    const id = nanoid()
-    const passwordHash = await hashPassword(password)
-    const now = new Date().toISOString()
+    const id = nanoid();
+    const passwordHash = await hashPassword(password);
+    const now = new Date().toISOString();
 
     await db.execute({
       sql: `INSERT INTO users (id, email, name, password_hash, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?)`,
       args: [id, email, name, passwordHash, now, now],
-    })
+    });
 
     return {
       id,
@@ -125,53 +132,53 @@ export async function createUser(
       name,
       created_at: now,
       updated_at: now,
-    }
+    };
   } catch (error) {
-    console.error('Error creating user:', error)
-    return null
+    console.error("Error creating user:", error);
+    return null;
   }
 }
 
 // Helper to get current user from session
 export async function getCurrentUser(): Promise<User | null> {
   try {
-    const session = await auth()
-    
+    const session = await auth();
+
     if (!session?.user?.id) {
-      return null
+      return null;
     }
 
     const result = await db.execute({
-      sql: 'SELECT id, email, name, created_at, updated_at FROM users WHERE id = ?',
+      sql: "SELECT id, email, name, created_at, updated_at FROM users WHERE id = ?",
       args: [session.user.id],
-    })
+    });
 
     if (result.rows.length === 0) {
-      return null
+      return null;
     }
 
-    return result.rows[0] as unknown as User
+    return result.rows[0] as unknown as User;
   } catch (error) {
-    console.error('Error getting current user:', error)
-    return null
+    console.error("Error getting current user:", error);
+    return null;
   }
 }
 
 // Type augmentation for NextAuth
-declare module 'next-auth' {
+declare module "next-auth" {
   interface User {
-    id: string
-    email: string
-    name: string
+    id: string;
+    email: string;
+    name: string;
   }
-  
+
   interface Session {
-    user: User
+    user: User;
   }
 }
 
-declare module 'next-auth/jwt' {
+declare module "next-auth/jwt" {
   interface JWT {
-    id: string
+    id: string;
   }
 }

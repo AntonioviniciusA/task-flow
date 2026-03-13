@@ -138,168 +138,172 @@ export function EditTaskDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit}>
-          <FieldGroup className="py-4">
-            <Field>
-              <FieldLabel htmlFor="edit-title">Título</FieldLabel>
-              <Input
-                id="edit-title"
-                placeholder="O que você precisa fazer?"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                required
-                disabled={isLoading}
-              />
-            </Field>
-
-            <Field>
-              <FieldLabel htmlFor="edit-description">
-                Descrição (opcional)
-              </FieldLabel>
-              <Textarea
-                id="edit-description"
-                placeholder="Detalhes adicionais..."
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={2}
-                disabled={isLoading}
-              />
-            </Field>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="max-h-[60vh] overflow-y-auto pr-2 -mr-2">
+            <FieldGroup className="py-4">
               <Field>
-                <FieldLabel htmlFor="dueDate">Data</FieldLabel>
+                <FieldLabel htmlFor="edit-title">Título</FieldLabel>
                 <Input
-                  id="dueDate"
-                  type="date"
-                  value={dueDate}
-                  onChange={(e) => setDueDate(e.target.value)}
+                  id="edit-title"
+                  placeholder="O que você precisa fazer?"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  required
                   disabled={isLoading}
                 />
               </Field>
 
               <Field>
-                <FieldLabel htmlFor="notificationTime">
-                  Hora da Notificação
+                <FieldLabel htmlFor="edit-description">
+                  Descrição (opcional)
                 </FieldLabel>
-                <Input
-                  id="notificationTime"
-                  type="time"
-                  value={notificationTime}
-                  onChange={(e) => setNotificationTime(e.target.value)}
+                <Textarea
+                  id="edit-description"
+                  placeholder="Detalhes adicionais..."
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={2}
                   disabled={isLoading}
                 />
               </Field>
-            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Field>
+                  <FieldLabel htmlFor="dueDate">Data</FieldLabel>
+                  <Input
+                    id="dueDate"
+                    type="date"
+                    value={dueDate}
+                    onChange={(e) => setDueDate(e.target.value)}
+                    disabled={isLoading}
+                  />
+                </Field>
+
+                <Field>
+                  <FieldLabel htmlFor="notificationTime">
+                    Hora da Notificação
+                  </FieldLabel>
+                  <Input
+                    id="notificationTime"
+                    type="time"
+                    value={notificationTime}
+                    onChange={(e) => setNotificationTime(e.target.value)}
+                    disabled={isLoading}
+                  />
+                </Field>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Field>
+                  <FieldLabel htmlFor="frequency">Frequência</FieldLabel>
+                  <Select
+                    value={frequency}
+                    onValueChange={(v) => setFrequency(v as TaskFrequency)}
+                    disabled={isLoading}
+                  >
+                    <SelectTrigger id="frequency">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="once">Uma vez</SelectItem>
+                      <SelectItem value="daily">Diária</SelectItem>
+                      <SelectItem value="weekly">Semanal</SelectItem>
+                      <SelectItem value="monthly">Mensal</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
+
+                {frequency === "weekly" && (
+                  <Field>
+                    <FieldLabel htmlFor="edit-dayOfWeek">
+                      Dia da Semana
+                    </FieldLabel>
+                    <Select
+                      value={frequencyDayOfWeek}
+                      onValueChange={setFrequencyDayOfWeek}
+                      disabled={isLoading}
+                    >
+                      <SelectTrigger id="edit-dayOfWeek">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="0">Domingo</SelectItem>
+                        <SelectItem value="1">Segunda-feira</SelectItem>
+                        <SelectItem value="2">Terça-feira</SelectItem>
+                        <SelectItem value="3">Quarta-feira</SelectItem>
+                        <SelectItem value="4">Quinta-feira</SelectItem>
+                        <SelectItem value="5">Sexta-feira</SelectItem>
+                        <SelectItem value="6">Sábado</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                )}
+
+                {frequency === "monthly" && (
+                  <Field>
+                    <FieldLabel htmlFor="edit-dayOfMonth">
+                      Dia do Mês
+                    </FieldLabel>
+                    <Select
+                      value={frequencyDayOfMonth}
+                      onValueChange={setFrequencyDayOfMonth}
+                      disabled={isLoading}
+                    >
+                      <SelectTrigger id="edit-dayOfMonth">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: 31 }, (_, i) => i + 1).map(
+                          (day) => (
+                            <SelectItem key={day} value={day.toString()}>
+                              Dia {day}
+                            </SelectItem>
+                          ),
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                )}
+              </div>
+
               <Field>
-                <FieldLabel htmlFor="frequency">Frequência</FieldLabel>
+                <FieldLabel htmlFor="edit-priority">Prioridade</FieldLabel>
                 <Select
-                  value={frequency}
-                  onValueChange={(v) => setFrequency(v as TaskFrequency)}
+                  value={priority}
+                  onValueChange={(v) => setPriority(v as TaskPriority)}
                   disabled={isLoading}
                 >
-                  <SelectTrigger id="frequency">
+                  <SelectTrigger id="edit-priority">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="once">Uma vez</SelectItem>
-                    <SelectItem value="daily">Diária</SelectItem>
-                    <SelectItem value="weekly">Semanal</SelectItem>
-                    <SelectItem value="monthly">Mensal</SelectItem>
+                    <SelectItem value="low">Baixa</SelectItem>
+                    <SelectItem value="medium">Média</SelectItem>
+                    <SelectItem value="high">Alta</SelectItem>
                   </SelectContent>
                 </Select>
               </Field>
 
-              {frequency === "weekly" && (
-                <Field>
-                  <FieldLabel htmlFor="edit-dayOfWeek">
-                    Dia da Semana
+              <Field className="flex items-center justify-between">
+                <div>
+                  <FieldLabel htmlFor="edit-notifications" className="mb-0">
+                    Lembrete
                   </FieldLabel>
-                  <Select
-                    value={frequencyDayOfWeek}
-                    onValueChange={setFrequencyDayOfWeek}
-                    disabled={isLoading}
-                  >
-                    <SelectTrigger id="edit-dayOfWeek">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="0">Domingo</SelectItem>
-                      <SelectItem value="1">Segunda-feira</SelectItem>
-                      <SelectItem value="2">Terça-feira</SelectItem>
-                      <SelectItem value="3">Quarta-feira</SelectItem>
-                      <SelectItem value="4">Quinta-feira</SelectItem>
-                      <SelectItem value="5">Sexta-feira</SelectItem>
-                      <SelectItem value="6">Sábado</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </Field>
-              )}
+                  <p className="text-xs text-muted-foreground">
+                    Receba uma notificação push
+                  </p>
+                </div>
+                <Switch
+                  id="edit-notifications"
+                  checked={notificationEnabled}
+                  onCheckedChange={setNotificationEnabled}
+                  disabled={isLoading}
+                  className="scale-110"
+                />
+              </Field>
+            </FieldGroup>
+          </div>
 
-              {frequency === "monthly" && (
-                <Field>
-                  <FieldLabel htmlFor="edit-dayOfMonth">Dia do Mês</FieldLabel>
-                  <Select
-                    value={frequencyDayOfMonth}
-                    onValueChange={setFrequencyDayOfMonth}
-                    disabled={isLoading}
-                  >
-                    <SelectTrigger id="edit-dayOfMonth">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Array.from({ length: 31 }, (_, i) => i + 1).map(
-                        (day) => (
-                          <SelectItem key={day} value={day.toString()}>
-                            Dia {day}
-                          </SelectItem>
-                        ),
-                      )}
-                    </SelectContent>
-                  </Select>
-                </Field>
-              )}
-            </div>
-
-            <Field>
-              <FieldLabel htmlFor="edit-priority">Prioridade</FieldLabel>
-              <Select
-                value={priority}
-                onValueChange={(v) => setPriority(v as TaskPriority)}
-                disabled={isLoading}
-              >
-                <SelectTrigger id="edit-priority">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="low">Baixa</SelectItem>
-                  <SelectItem value="medium">Média</SelectItem>
-                  <SelectItem value="high">Alta</SelectItem>
-                </SelectContent>
-              </Select>
-            </Field>
-
-            <Field className="flex items-center justify-between">
-              <div>
-                <FieldLabel htmlFor="edit-notifications" className="mb-0">
-                  Lembrete
-                </FieldLabel>
-                <p className="text-xs text-muted-foreground">
-                  Receba uma notificação push
-                </p>
-              </div>
-              <Switch
-                id="edit-notifications"
-                checked={notificationEnabled}
-                onCheckedChange={setNotificationEnabled}
-                disabled={isLoading}
-                className="scale-110"
-              />
-            </Field>
-          </FieldGroup>
-
-          <DialogFooter>
+          <DialogFooter className="mt-4">
             <Button
               type="button"
               variant="outline"

@@ -113,6 +113,14 @@ self.addEventListener("push", (event) => {
   );
 });
 
+// Lidar com agendamentos periódicos (se suportado pelo navegador)
+self.addEventListener("periodicsync", (event) => {
+  if (event.tag === "task-worker") {
+    console.log("[Service Worker] Executando worker via Periodic Sync");
+    event.waitUntil(fetch("/api/worker"));
+  }
+});
+
 // Lidar com cliques nas notificações
 self.addEventListener("notificationclick", (event) => {
   const notification = event.notification;

@@ -64,6 +64,15 @@ export function CreateTaskDialog({
     setIsLoading(true);
 
     try {
+      let scheduledTimeIso: string | undefined;
+      if (notificationEnabled && dueDate && notificationTime) {
+        // Criar data local e converter para ISO UTC
+        const localDate = new Date(`${dueDate}T${notificationTime}`);
+        if (!isNaN(localDate.getTime())) {
+          scheduledTimeIso = localDate.toISOString();
+        }
+      }
+
       const payload: CreateTaskInput = {
         title,
         description: description || undefined,
@@ -76,6 +85,7 @@ export function CreateTaskDialog({
         notification_time: notificationTime || undefined,
         priority,
         notification_enabled: notificationEnabled,
+        scheduled_time_iso: scheduledTimeIso,
       };
 
       const response = await fetch("/api/tasks", {
@@ -138,7 +148,7 @@ export function CreateTaskDialog({
               />
             </Field>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Field>
                 <FieldLabel htmlFor="dueDate">Data</FieldLabel>
                 <Input
@@ -164,7 +174,7 @@ export function CreateTaskDialog({
               </Field>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Field>
                 <FieldLabel htmlFor="frequency">Frequência</FieldLabel>
                 <Select
@@ -265,6 +275,7 @@ export function CreateTaskDialog({
                 checked={notificationEnabled}
                 onCheckedChange={setNotificationEnabled}
                 disabled={isLoading}
+                className="scale-110"
               />
             </Field>
           </FieldGroup>

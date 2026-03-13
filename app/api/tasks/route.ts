@@ -111,18 +111,24 @@ export async function POST(
 
     // 2. Agendar notificação se habilitada
     let finalScheduledTime: string | null = null;
-    if (
-      body.notification_enabled !== false &&
-      body.notification_time &&
-      body.due_date
-    ) {
-      const scheduledDate = new Date(
-        `${body.due_date}T${body.notification_time}`,
-      );
+    if (body.notification_enabled !== false) {
+      if (body.scheduled_time_iso) {
+        // Usa o ISO enviado pelo cliente (que já está no UTC correto)
+        const scheduledDate = new Date(body.scheduled_time_iso);
+        if (!isNaN(scheduledDate.getTime())) {
+          await scheduleTask(id, scheduledDate);
+          finalScheduledTime = scheduledDate.toISOString();
+        }
+      } else if (body.notification_time && body.due_date) {
+        // Fallback para o cálculo do servidor (pode ter problemas de fuso se o servidor for UTC)
+        const scheduledDate = new Date(
+          `${body.due_date}T${body.notification_time}`,
+        );
 
-      if (scheduledDate && !isNaN(scheduledDate.getTime())) {
-        await scheduleTask(id, scheduledDate);
-        finalScheduledTime = scheduledDate.toISOString();
+        if (scheduledDate && !isNaN(scheduledDate.getTime())) {
+          await scheduleTask(id, scheduledDate);
+          finalScheduledTime = scheduledDate.toISOString();
+        }
       }
     }
 

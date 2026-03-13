@@ -110,6 +110,7 @@ export interface CreateTaskInput {
   notification_time?: string;
   priority?: TaskPriority;
   notification_enabled?: boolean;
+  scheduled_time_iso?: string;
   category_ids?: string[];
 }
 

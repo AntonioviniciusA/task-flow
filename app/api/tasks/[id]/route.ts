@@ -174,10 +174,16 @@ export async function PATCH(
         body.notification_time !== undefined ||
         body.frequency !== undefined ||
         body.frequency_day_of_week !== undefined ||
-        body.frequency_day_of_month !== undefined;
+        body.frequency_day_of_month !== undefined ||
+        body.scheduled_time_iso !== undefined;
 
       if (needsReschedule || !currentTask.scheduled_time) {
-        if (notificationTime && dueDate) {
+        if (body.scheduled_time_iso) {
+          const scheduledDate = new Date(body.scheduled_time_iso);
+          if (!isNaN(scheduledDate.getTime())) {
+            await scheduleTask(id, scheduledDate);
+          }
+        } else if (notificationTime && dueDate) {
           const scheduledDate = new Date(`${dueDate}T${notificationTime}`);
 
           if (scheduledDate && !isNaN(scheduledDate.getTime())) {

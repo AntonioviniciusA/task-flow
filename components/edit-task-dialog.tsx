@@ -83,6 +83,14 @@ export function EditTaskDialog({
     setIsLoading(true);
 
     try {
+      let scheduledTimeIso: string | undefined;
+      if (notificationEnabled && dueDate && notificationTime) {
+        const localDate = new Date(`${dueDate}T${notificationTime}`);
+        if (!isNaN(localDate.getTime())) {
+          scheduledTimeIso = localDate.toISOString();
+        }
+      }
+
       const payload: UpdateTaskInput = {
         title,
         description: description || undefined,
@@ -95,6 +103,7 @@ export function EditTaskDialog({
         notification_time: notificationTime || undefined,
         priority,
         notification_enabled: notificationEnabled,
+        scheduled_time_iso: scheduledTimeIso,
       };
 
       const response = await fetch(`/api/tasks/${task.id}`, {
@@ -156,7 +165,7 @@ export function EditTaskDialog({
               />
             </Field>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Field>
                 <FieldLabel htmlFor="dueDate">Data</FieldLabel>
                 <Input
@@ -182,7 +191,7 @@ export function EditTaskDialog({
               </Field>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Field>
                 <FieldLabel htmlFor="frequency">Frequência</FieldLabel>
                 <Select
@@ -285,6 +294,7 @@ export function EditTaskDialog({
                 checked={notificationEnabled}
                 onCheckedChange={setNotificationEnabled}
                 disabled={isLoading}
+                className="scale-110"
               />
             </Field>
           </FieldGroup>

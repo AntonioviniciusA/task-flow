@@ -103,11 +103,6 @@ export async function PATCH(
       args.push(body.due_date || null);
     }
 
-    if (body.due_time !== undefined) {
-      updates.push("due_time = ?");
-      args.push(body.due_time || null);
-    }
-
     if (body.frequency !== undefined) {
       updates.push("frequency = ?");
       args.push(body.frequency);
@@ -157,14 +152,8 @@ export async function PATCH(
 
     // Handle notification scheduling changes
     const dueDate = body.due_date ?? currentTask.due_date;
-    const dueTime = body.due_time ?? currentTask.due_time;
     const notificationTime =
       body.notification_time ?? currentTask.notification_time;
-    const frequency = body.frequency ?? currentTask.frequency;
-    const frequencyDayOfWeek =
-      body.frequency_day_of_week ?? currentTask.frequency_day_of_week;
-    const frequencyDayOfMonth =
-      body.frequency_day_of_month ?? currentTask.frequency_day_of_month;
     const notificationEnabled =
       body.notification_enabled ?? currentTask.notification_enabled;
     const isCompleted = (body.status ?? currentTask.status) === "completed";
@@ -182,24 +171,18 @@ export async function PATCH(
     if (notificationEnabled && !isCompleted && !isCancelled) {
       const needsReschedule =
         body.due_date !== undefined ||
-        body.due_time !== undefined ||
         body.notification_time !== undefined ||
         body.frequency !== undefined ||
         body.frequency_day_of_week !== undefined ||
         body.frequency_day_of_month !== undefined;
 
       if (needsReschedule || !currentTask.scheduled_time) {
-        // Prioridade: notification_time > (due_date + due_time)
-        let scheduledDate: Date | null = null;
-
         if (notificationTime && dueDate) {
-          scheduledDate = new Date(`${dueDate}T${notificationTime}`);
-        } else if (dueDate && dueTime) {
-          scheduledDate = new Date(`${dueDate}T${dueTime}`);
-        }
+          const scheduledDate = new Date(`${dueDate}T${notificationTime}`);
 
-        if (scheduledDate && !isNaN(scheduledDate.getTime())) {
-          await scheduleTask(id, scheduledDate);
+          if (scheduledDate && !isNaN(scheduledDate.getTime())) {
+            await scheduleTask(id, scheduledDate);
+          }
         }
       }
     }

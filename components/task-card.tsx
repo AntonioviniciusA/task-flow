@@ -255,7 +255,6 @@ export function TaskCard({ task, onUpdate }: TaskCardProps) {
               >
                 <Calendar className="h-3 w-3 mr-1" />
                 {formattedDate}
-                {task.due_time && ` ${task.due_time}`}
               </Badge>
             )}
 

@@ -20,7 +20,6 @@ export interface Task {
   title: string;
   description: string | null;
   due_date: string | null;
-  due_time: string | null;
   frequency: "once" | "daily" | "weekly" | "monthly";
   frequency_day_of_week: number | null;
   frequency_day_of_month: number | null;

@@ -26,7 +26,6 @@ export interface Task {
   title: string;
   description: string | null;
   due_date: string | null;
-  due_time: string | null;
   frequency: TaskFrequency;
   frequency_day_of_week: number | null; // 0-6 (Sun-Sat)
   frequency_day_of_month: number | null; // 1-31
@@ -105,7 +104,6 @@ export interface CreateTaskInput {
   title: string;
   description?: string;
   due_date?: string;
-  due_time?: string;
   frequency?: TaskFrequency;
   frequency_day_of_week?: number;
   frequency_day_of_month?: number;

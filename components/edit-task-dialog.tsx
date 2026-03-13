@@ -47,7 +47,6 @@ export function EditTaskDialog({
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description || "");
   const [dueDate, setDueDate] = useState(task.due_date || "");
-  const [dueTime, setDueTime] = useState(task.due_time || "");
   const [frequency, setFrequency] = useState<TaskFrequency>(
     task.frequency || "once",
   );
@@ -70,7 +69,6 @@ export function EditTaskDialog({
       setTitle(task.title);
       setDescription(task.description || "");
       setDueDate(task.due_date || "");
-      setDueTime(task.due_time || "");
       setFrequency(task.frequency || "once");
       setFrequencyDayOfWeek(String(task.frequency_day_of_week ?? "0"));
       setFrequencyDayOfMonth(String(task.frequency_day_of_month ?? "1"));
@@ -89,7 +87,6 @@ export function EditTaskDialog({
         title,
         description: description || undefined,
         due_date: dueDate || undefined,
-        due_time: dueTime || undefined,
         frequency,
         frequency_day_of_week:
           frequency === "weekly" ? parseInt(frequencyDayOfWeek) : undefined,
@@ -172,12 +169,14 @@ export function EditTaskDialog({
               </Field>
 
               <Field>
-                <FieldLabel htmlFor="dueTime">Horário Limite</FieldLabel>
+                <FieldLabel htmlFor="notificationTime">
+                  Hora da Notificação
+                </FieldLabel>
                 <Input
-                  id="dueTime"
+                  id="notificationTime"
                   type="time"
-                  value={dueTime}
-                  onChange={(e) => setDueTime(e.target.value)}
+                  value={notificationTime}
+                  onChange={(e) => setNotificationTime(e.target.value)}
                   disabled={isLoading}
                 />
               </Field>
@@ -252,19 +251,6 @@ export function EditTaskDialog({
                   </Select>
                 </Field>
               )}
-
-              <Field>
-                <FieldLabel htmlFor="notificationTime">
-                  Hora da Notificação
-                </FieldLabel>
-                <Input
-                  id="notificationTime"
-                  type="time"
-                  value={notificationTime}
-                  onChange={(e) => setNotificationTime(e.target.value)}
-                  disabled={isLoading}
-                />
-              </Field>
             </div>
 
             <Field>

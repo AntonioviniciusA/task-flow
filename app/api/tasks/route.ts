@@ -86,18 +86,17 @@ export async function POST(
     // 1. Inserir tarefa no banco
     await db.execute({
       sql: `INSERT INTO tasks (
-        id, user_id, title, description, due_date, due_time,
+        id, user_id, title, description, due_date,
         frequency, frequency_day_of_week, frequency_day_of_month, notification_time,
         priority, status, notification_enabled, executed, scheduled_time,
         created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, ?)`,
       args: [
         id,
         session.user.id,
         body.title.trim(),
         body.description || null,
         body.due_date || null,
-        body.due_time || null,
         body.frequency || "once",
         body.frequency_day_of_week ?? null,
         body.frequency_day_of_month ?? null,
@@ -112,14 +111,14 @@ export async function POST(
 
     // 2. Agendar notificação se habilitada
     let finalScheduledTime: string | null = null;
-    if (body.notification_enabled !== false) {
-      let scheduledDate: Date | null = null;
-
-      if (body.notification_time && body.due_date) {
-        scheduledDate = new Date(`${body.due_date}T${body.notification_time}`);
-      } else if (body.due_date && body.due_time) {
-        scheduledDate = new Date(`${body.due_date}T${body.due_time}`);
-      }
+    if (
+      body.notification_enabled !== false &&
+      body.notification_time &&
+      body.due_date
+    ) {
+      const scheduledDate = new Date(
+        `${body.due_date}T${body.notification_time}`,
+      );
 
       if (scheduledDate && !isNaN(scheduledDate.getTime())) {
         await scheduleTask(id, scheduledDate);
@@ -143,7 +142,7 @@ export async function POST(
       title: body.title.trim(),
       description: body.description || null,
       due_date: body.due_date || null,
-      due_time: body.due_time || null,
+      due_time: null,
       frequency: body.frequency || "once",
       notification_time: body.notification_time || null,
       priority: body.priority || "medium",

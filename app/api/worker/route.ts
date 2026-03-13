@@ -1,9 +1,9 @@
-import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { calculateNextRun } from '@/lib/scheduler';
-import { sendPushToMultipleDevices } from '@/lib/push';
+import { NextResponse } from "next/server";
+import { db } from "@/lib/db";
+import { calculateNextRun } from "@/lib/scheduler";
+import { sendPushToMultipleDevices } from "@/lib/push";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   const now = new Date().toISOString();
@@ -29,6 +29,7 @@ export async function GET() {
       const taskId = task.id as string;
       const userId = task.user_id as string;
       const title = task.title as string;
+      const description = task.description as string | null;
       const frequency = task.frequency as any;
       const dayOfWeek = task.frequency_day_of_week as number | null;
       const dayOfMonth = task.frequency_day_of_month as number | null;
@@ -37,7 +38,7 @@ export async function GET() {
 
       // 2. Buscar dispositivos do usuário para enviar push
       const deviceResult = await db.execute({
-        sql: 'SELECT endpoint, p256dh, auth FROM devices WHERE user_id = ? AND is_active = 1',
+        sql: "SELECT endpoint, p256dh, auth FROM devices WHERE user_id = ? AND is_active = 1",
         args: [userId],
       });
 
@@ -51,57 +52,71 @@ export async function GET() {
 
       if (subscriptions.length > 0) {
         await sendPushToMultipleDevices(subscriptions, {
-          title: 'Lembrete de Tarefa',
-          body: title,
+          title: title,
+          body: description || "Você tem uma tarefa pendente",
           taskId: taskId,
           url: `/dashboard`,
-          urgency: task.priority === 'high' ? 'high' : 'medium',
+          urgency: task.priority === "high" ? "high" : "medium",
           tag: taskId,
           actions: [
             {
-              action: 'complete',
-              title: '✅ Concluir',
+              action: "complete",
+              title: "✅ Concluir",
             },
             {
-              action: 'snooze',
-              title: '⏰ Adiar 15min',
-            }
-          ]
+              action: "snooze",
+              title: "⏰ Adiar 15min",
+            },
+          ],
         });
-        console.log(`[Worker] Notificações enviadas para ${subscriptions.length} dispositivos.`);
+        console.log(
+          `[Worker] Notificações enviadas para ${subscriptions.length} dispositivos.`,
+        );
       } else {
-        console.log(`[Worker] Nenhum dispositivo ativo encontrado para o usuário ${userId}.`);
+        console.log(
+          `[Worker] Nenhum dispositivo ativo encontrado para o usuário ${userId}.`,
+        );
       }
 
       // 3. Atualizar status da tarefa atual para executada
       await db.execute({
-        sql: 'UPDATE tasks SET executed = 1, updated_at = ? WHERE id = ?',
+        sql: "UPDATE tasks SET executed = 1, updated_at = ? WHERE id = ?",
         args: [new Date().toISOString(), taskId],
       });
 
       // 4. Se for recorrente, agendar a próxima execução
-      if (frequency && frequency !== 'once') {
+      if (frequency && frequency !== "once") {
         const currentScheduled = new Date(task.scheduled_time as string);
-        const nextRun = calculateNextRun(currentScheduled, frequency, dayOfWeek, dayOfMonth);
+        const nextRun = calculateNextRun(
+          currentScheduled,
+          frequency,
+          dayOfWeek,
+          dayOfMonth,
+        );
 
         await db.execute({
-          sql: 'UPDATE tasks SET scheduled_time = ?, executed = 0, updated_at = ? WHERE id = ?',
+          sql: "UPDATE tasks SET scheduled_time = ?, executed = 0, updated_at = ? WHERE id = ?",
           args: [nextRun.toISOString(), new Date().toISOString(), taskId],
         });
-        console.log(`[Worker] Tarefa recorrente reagendada para ${nextRun.toISOString()}`);
+        console.log(
+          `[Worker] Tarefa recorrente reagendada para ${nextRun.toISOString()}`,
+        );
       }
     }
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       processed: tasks.length,
-      timestamp: new Date().toISOString() 
+      timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error('[Worker] Erro crítico no processamento:', error);
-    return NextResponse.json({ 
-      success: false, 
-      error: 'Erro interno no worker' 
-    }, { status: 500 });
+    console.error("[Worker] Erro crítico no processamento:", error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Erro interno no worker",
+      },
+      { status: 500 },
+    );
   }
 }

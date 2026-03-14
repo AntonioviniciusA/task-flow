@@ -543,9 +543,9 @@ export default function SettingsPage() {
           <CardTitle>Sobre</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-muted-foreground">
-          <p>Gerenciador de Tarefas PWA</p>
+          <p>No Time PWA</p>
           <Separator />
-          <p>Versão 1.0.0</p>
+          <p>Versão Beta 1.18</p>
           <p>Com suporte a notificações push e modo offline</p>
         </CardContent>
       </Card>

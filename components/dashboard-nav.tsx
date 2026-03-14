@@ -55,12 +55,17 @@ export function DashboardNav({ user }: DashboardNavProps) {
         <div className="flex h-14 items-center justify-between">
           {/* Logo */}
           <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary text-primary-foreground">
-              <CheckSquare className="w-4 h-4" />
+            <div className="flex items-center justify-center w-10 h-10 rounded-xl overflow-hidden shadow-sm">
+              <img src="/icon.png" alt="No Time Logo" className="w-full h-full object-cover" />
             </div>
-            <span className="font-semibold text-foreground hidden sm:inline">
-              Tarefas
-            </span>
+            <div className="flex flex-col">
+              <span className="font-bold text-foreground leading-tight tracking-tight">
+                No Time
+              </span>
+              <span className="text-[10px] text-[#007AFF] font-bold uppercase tracking-wider">
+                Beta 1.19
+              </span>
+            </div>
           </Link>
 
           {/* Desktop Navigation */}

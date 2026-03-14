@@ -1,7 +1,7 @@
 {
-  "name": "Gerenciador de Tarefas",
-  "short_name": "Tarefas",
-  "description": "Sistema de gerenciamento de tarefas com notificações push",
+  "name": "No Time",
+  "short_name": "No Time",
+  "description": "Gerenciador de tarefas inteligente",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#09090b",
@@ -10,21 +10,21 @@
   "scope": "/",
   "icons": [
     {
-      "src": "/icon-light-32x32.png",
+      "src": "/icone-notime.png",
       "sizes": "32x32",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icon-dark-32x32.png",
+      "src": "/icone-notime.png",
       "sizes": "32x32",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/icon-512x512.jpg",
+      "src": "/icons/icone-notime.png",
       "sizes": "512x512",
-      "type": "image/jpeg",
+      "type": "image/png",
       "purpose": "maskable any"
     }
   ],

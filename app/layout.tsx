@@ -8,14 +8,14 @@ const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'Gerenciador de Tarefas',
-  description: 'Sistema de gerenciamento de tarefas com notificações push',
+  title: 'No Time',
+  description: 'Sistema de gerenciamento de tarefas inteligente',
   generator: 'v0.app',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Tarefas',
+    title: 'No Time',
   },
   formatDetection: {
     telephone: false,

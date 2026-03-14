@@ -117,7 +117,7 @@ self.addEventListener("push", (event) => {
 self.addEventListener("periodicsync", (event) => {
   if (event.tag === "task-worker") {
     console.log("[Service Worker] Executando worker via Periodic Sync");
-    event.waitUntil(fetch("/api/worker"));
+    event.waitUntil(fetch("/api/check-tasks"));
   }
 });
 

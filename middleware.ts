@@ -6,7 +6,7 @@ export default auth((req) => {
   const publicRoutes = ["/", "/login", "/register"];
   const publicPrefixes = [
     "/api/auth/",
-    "/api/worker",
+    "/api/check-tasks",
     "/_next/",
     "/icons/",
     "/sw.js",

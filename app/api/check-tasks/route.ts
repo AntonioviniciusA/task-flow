@@ -2,23 +2,25 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { calculateNextRun } from "@/lib/scheduler";
 import { sendPushToMultipleDevices } from "@/lib/push";
+import { auth } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 /**
  * GET /api/check-tasks
- * Rota chamada pelo Cron-job.org para verificar e disparar notificações
+ * Rota chamada pelo Cron-job.org (via Bearer Token) ou pelo Browser (via Sessão)
  */
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
-  const cronSecret = process.env.CRON_SECRET;
+  const cronSecret = process.env.token_Cron || process.env.CRON_SECRET;
   const isDevelopment = process.env.NODE_ENV === "development";
 
-  // 1. Segurança: Verificar Token Bearer (ou permitir se for dev para testes locais)
-  if (
-    !isDevelopment &&
-    (!authHeader || authHeader !== `Bearer ${cronSecret}`)
-  ) {
+  // 1. Verificar se a chamada é autorizada (Token Cron ou Sessão de Usuário)
+  const session = await auth();
+  const isAuthorizedByToken = authHeader === `Bearer ${cronSecret}`;
+  const isAuthorizedBySession = !!session?.user;
+
+  if (!isDevelopment && !isAuthorizedByToken && !isAuthorizedBySession) {
     console.error("[Cron] Acesso não autorizado");
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

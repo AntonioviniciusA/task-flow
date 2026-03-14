@@ -7,7 +7,10 @@ export function WorkerTrigger() {
     // Função para chamar o worker
     const triggerWorker = async () => {
       try {
-        await fetch("/api/worker");
+        // Agora chama a nova rota de check-tasks. 
+        // Nota: Esta chamada via browser não terá o Bearer Token, 
+        // mas em desenvolvimento podemos permitir ou apenas ignorar o erro 401.
+        await fetch("/api/check-tasks");
       } catch (error) {
         // Silencioso em produção, apenas para manter o cron rodando
         console.error("Worker trigger failed", error);

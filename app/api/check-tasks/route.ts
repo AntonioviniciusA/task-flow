@@ -5,23 +5,26 @@ import { sendPushToMultipleDevices } from "@/lib/push";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * GET /api/check-tasks
+ * Rota chamada pelo Cron-job.org para verificar e disparar notificações
+ */
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
   const authHeader = request.headers.get('authorization');
-  
-  // Verifica se a chamada vem do Vercel Cron ou se tem o segredo correto
-  // Em desenvolvimento local, permitimos sem segredo para facilitar
-  const isVercelCron = authHeader === `Bearer ${process.env.CRON_SECRET}`;
+  const cronSecret = process.env.token_Cron || process.env.CRON_SECRET;
   const isDevelopment = process.env.NODE_ENV === 'development';
   
-  // Se quiser proteger em produção, descomente a linha abaixo e adicione CRON_SECRET no .env
-  // if (!isVercelCron && !isDevelopment) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  // 1. Segurança: Verificar Token Bearer (ou permitir se for dev para testes locais)
+  if (!isDevelopment && (!authHeader || authHeader !== `Bearer ${cronSecret}`)) {
+    console.error("[Cron] Acesso não autorizado");
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const now = new Date().toISOString();
-  console.log(`[Worker] Iniciando processamento de tarefas em ${now}`);
+  console.log(`[Cron] Verificação iniciada em ${now}`);
 
   try {
-    // 1. Buscar tarefas pendentes que já passaram do horário agendado
+    // 2. Buscar tarefas pendentes que já passaram do horário agendado
     const result = await db.execute({
       sql: `
         SELECT * FROM tasks 
@@ -34,7 +37,7 @@ export async function GET(request: Request) {
     });
 
     const tasks = result.rows;
-    console.log(`[Worker] Encontradas ${tasks.length} tarefas para processar.`);
+    let notificationsSent = 0;
 
     for (const task of tasks) {
       const taskId = task.id as string;
@@ -45,9 +48,7 @@ export async function GET(request: Request) {
       const dayOfWeek = task.frequency_day_of_week as number | null;
       const dayOfMonth = task.frequency_day_of_month as number | null;
 
-      console.log(`[Worker] Processando tarefa: ${title} (${taskId})`);
-
-      // 2. Buscar dispositivos do usuário para enviar push
+      // 3. Buscar dispositivos (subscriptions) do usuário
       const deviceResult = await db.execute({
         sql: "SELECT endpoint, p256dh, auth FROM devices WHERE user_id = ? AND is_active = 1",
         args: [userId],
@@ -62,72 +63,52 @@ export async function GET(request: Request) {
       }));
 
       if (subscriptions.length > 0) {
-        await sendPushToMultipleDevices(subscriptions, {
+        // 4. Enviar notificações Web Push
+        const pushResult = await sendPushToMultipleDevices(subscriptions, {
           title: title,
           body: description || "Você tem uma tarefa pendente",
           taskId: taskId,
           url: `/dashboard`,
-          urgency: task.priority === "high" ? "high" : "medium",
+          urgency: task.priority === "high" ? "high" : "normal",
           tag: taskId,
           actions: [
-            {
-              action: "complete",
-              title: "✅ Concluir",
-            },
-            {
-              action: "snooze",
-              title: "⏰ Adiar 15min",
-            },
+            { action: "complete", title: "✅ Concluir" },
+            { action: "snooze", title: "⏰ Adiar 15min" },
           ],
         });
-        console.log(
-          `[Worker] Notificações enviadas para ${subscriptions.length} dispositivos.`,
-        );
-      } else {
-        console.log(
-          `[Worker] Nenhum dispositivo ativo encontrado para o usuário ${userId}.`,
-        );
+        
+        if (pushResult.successful > 0) {
+          notificationsSent++;
+        }
       }
 
-      // 3. Atualizar status da tarefa atual para executada
+      // 5. Marcar como executada para evitar duplicidade
       await db.execute({
         sql: "UPDATE tasks SET executed = 1, updated_at = ? WHERE id = ?",
         args: [new Date().toISOString(), taskId],
       });
 
-      // 4. Se for recorrente, agendar a próxima execução
+      // 6. Tratar recorrência
       if (frequency && frequency !== "once") {
         const currentScheduled = new Date(task.scheduled_time as string);
-        const nextRun = calculateNextRun(
-          currentScheduled,
-          frequency,
-          dayOfWeek,
-          dayOfMonth,
-        );
+        const nextRun = calculateNextRun(currentScheduled, frequency, dayOfWeek, dayOfMonth);
 
         await db.execute({
           sql: "UPDATE tasks SET scheduled_time = ?, executed = 0, updated_at = ? WHERE id = ?",
           args: [nextRun.toISOString(), new Date().toISOString(), taskId],
         });
-        console.log(
-          `[Worker] Tarefa recorrente reagendada para ${nextRun.toISOString()}`,
-        );
       }
     }
 
     return NextResponse.json({
       success: true,
-      processed: tasks.length,
-      timestamp: new Date().toISOString(),
+      checked: tasks.length,
+      sent: notificationsSent,
+      timestamp: new Date().toISOString()
     });
+
   } catch (error) {
-    console.error("[Worker] Erro crítico no processamento:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Erro interno no worker",
-      },
-      { status: 500 },
-    );
+    console.error("[Cron] Erro no processamento:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

@@ -144,8 +144,8 @@ export function EditTaskDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit}>
-          <div className="max-h-[60vh] overflow-y-auto pr-2 -mr-2">
+        <form onSubmit={handleSubmit} className="overflow-x-hidden">
+          <div className="max-h-[60vh] overflow-y-auto overflow-x-hidden pr-2 -mr-2">
             <FieldGroup className="py-4">
               <Field>
                 <FieldLabel htmlFor="edit-title">Título</FieldLabel>

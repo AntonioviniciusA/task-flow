@@ -1,121 +1,153 @@
-'use client'
+"use client";
 
-import { useState, useEffect } from 'react'
-import useSWR from 'swr'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Switch } from '@/components/ui/switch'
-import { Field, FieldLabel, FieldGroup } from '@/components/ui/field'
-import { Separator } from '@/components/ui/separator'
-import { toast } from 'sonner'
-import { Bell, BellOff, Smartphone, Trash2, Download, RefreshCw } from 'lucide-react'
-import type { Device } from '@/lib/types'
+import { useState, useEffect } from "react";
+import useSWR from "swr";
+import { useTheme } from "next-themes";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Field, FieldLabel, FieldGroup } from "@/components/ui/field";
+import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { toast } from "sonner";
+import {
+  Bell,
+  BellOff,
+  Smartphone,
+  Trash2,
+  Download,
+  RefreshCw,
+  Moon,
+  Sun,
+  Monitor,
+} from "lucide-react";
+import type { Device } from "@/lib/types";
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json())
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export default function SettingsPage() {
+  const { theme, setTheme } = useTheme();
   const { data, mutate } = useSWR<{ success: boolean; data: Device[] }>(
-    '/api/devices',
-    fetcher
-  )
-  const [notificationsEnabled, setNotificationsEnabled] = useState(false)
-  const [isInstallable, setIsInstallable] = useState(false)
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
+    "/api/devices",
+    fetcher,
+  );
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [isInstallable, setIsInstallable] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] =
+    useState<BeforeInstallPromptEvent | null>(null);
 
   useEffect(() => {
     // Check notification permission
-    if ('Notification' in window) {
-      setNotificationsEnabled(Notification.permission === 'granted')
+    if ("Notification" in window) {
+      setNotificationsEnabled(Notification.permission === "granted");
     }
 
     // Check if PWA can be installed
     const handleBeforeInstall = (e: Event) => {
-      e.preventDefault()
-      setDeferredPrompt(e as BeforeInstallPromptEvent)
-      setIsInstallable(true)
-    }
+      e.preventDefault();
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
+      setIsInstallable(true);
+    };
 
-    window.addEventListener('beforeinstallprompt', handleBeforeInstall)
-    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall)
-  }, [])
+    window.addEventListener("beforeinstallprompt", handleBeforeInstall);
+    return () =>
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstall);
+  }, []);
 
   async function handleInstallPWA() {
-    if (!deferredPrompt) return
+    if (!deferredPrompt) return;
 
-    deferredPrompt.prompt()
-    const { outcome } = await deferredPrompt.userChoice
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
 
-    if (outcome === 'accepted') {
-      toast.success('App instalado com sucesso!')
+    if (outcome === "accepted") {
+      toast.success("App instalado com sucesso!");
     }
-    setDeferredPrompt(null)
-    setIsInstallable(false)
+    setDeferredPrompt(null);
+    setIsInstallable(false);
   }
 
   async function handleRemoveDevice(endpoint: string) {
     try {
-      const response = await fetch(`/api/devices?endpoint=${encodeURIComponent(endpoint)}`, {
-        method: 'DELETE',
-      })
+      const response = await fetch(
+        `/api/devices?endpoint=${encodeURIComponent(endpoint)}`,
+        {
+          method: "DELETE",
+        },
+      );
 
       if (response.ok) {
-        toast.success('Dispositivo removido')
-        mutate()
+        toast.success("Dispositivo removido");
+        mutate();
       } else {
-        toast.error('Erro ao remover dispositivo')
+        toast.error("Erro ao remover dispositivo");
       }
     } catch {
-      toast.error('Erro ao remover dispositivo')
+      toast.error("Erro ao remover dispositivo");
     }
   }
 
   async function handleToggleNotifications() {
     if (notificationsEnabled) {
       // Can't revoke permission via JS, inform user
-      toast.info('Para desativar, remova a permissão nas configurações do navegador')
-      return
+      toast.info(
+        "Para desativar, remova a permissão nas configurações do navegador",
+      );
+      return;
     }
 
     try {
-      const permission = await Notification.requestPermission()
-      if (permission === 'granted') {
-        setNotificationsEnabled(true)
-        toast.success('Notificações ativadas!')
+      const permission = await Notification.requestPermission();
+      if (permission === "granted") {
+        setNotificationsEnabled(true);
+        toast.success("Notificações ativadas!");
 
         // Register for push
-        const registration = await navigator.serviceWorker.ready
-        const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+        const registration = await navigator.serviceWorker.ready;
+        const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 
         if (vapidPublicKey) {
           const subscription = await registration.pushManager.subscribe({
             userVisibleOnly: true,
             applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
-          })
+          });
 
-          await fetch('/api/devices', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+          await fetch("/api/devices", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               endpoint: subscription.endpoint,
-              p256dh: arrayBufferToBase64(subscription.getKey('p256dh')),
-              auth: arrayBufferToBase64(subscription.getKey('auth')),
+              p256dh: arrayBufferToBase64(subscription.getKey("p256dh")),
+              auth: arrayBufferToBase64(subscription.getKey("auth")),
               user_agent: navigator.userAgent,
             }),
-          })
+          });
 
-          mutate()
+          mutate();
         }
       } else {
-        toast.error('Permissão negada')
+        toast.error("Permissão negada");
       }
     } catch (error) {
-      console.error(error)
-      toast.error('Erro ao ativar notificações')
+      console.error(error);
+      toast.error("Erro ao ativar notificações");
     }
   }
 
-  const devices = data?.data || []
+  const devices = data?.data || [];
 
   return (
     <div className="space-y-6">
@@ -177,6 +209,52 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
+      {/* Aparência */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Sun className="w-5 h-5" />
+            Aparência
+          </CardTitle>
+          <CardDescription>Personalize o visual do aplicativo</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <FieldGroup>
+            <Field>
+              <FieldLabel htmlFor="theme-select">Tema do Aplicativo</FieldLabel>
+              <Select value={theme} onValueChange={setTheme}>
+                <SelectTrigger
+                  id="theme-select"
+                  className="w-full sm:w-[200px]"
+                >
+                  <SelectValue placeholder="Selecione o tema" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="light">
+                    <div className="flex items-center gap-2">
+                      <Sun className="w-4 h-4" />
+                      <span>Claro</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="dark">
+                    <div className="flex items-center gap-2">
+                      <Moon className="w-4 h-4" />
+                      <span>Escuro</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="system">
+                    <div className="flex items-center gap-2">
+                      <Monitor className="w-4 h-4" />
+                      <span>Sistema</span>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+          </FieldGroup>
+        </CardContent>
+      </Card>
+
       {/* Devices */}
       <Card>
         <CardHeader>
@@ -201,7 +279,9 @@ export default function SettingsPage() {
             <div className="text-center py-8 text-muted-foreground">
               <BellOff className="w-10 h-10 mx-auto mb-2 opacity-50" />
               <p>Nenhum dispositivo registrado</p>
-              <p className="text-sm">Ative as notificações para registrar este dispositivo</p>
+              <p className="text-sm">
+                Ative as notificações para registrar este dispositivo
+              </p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -214,17 +294,19 @@ export default function SettingsPage() {
                     <Smartphone className="w-5 h-5 text-muted-foreground" />
                     <div>
                       <p className="font-medium text-sm">
-                        {device.device_name || 'Dispositivo'}
+                        {device.device_name || "Dispositivo"}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        Registrado em{' '}
-                        {new Date(device.created_at).toLocaleDateString('pt-BR')}
+                        Registrado em{" "}
+                        {new Date(device.created_at).toLocaleDateString(
+                          "pt-BR",
+                        )}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge variant={device.is_active ? 'default' : 'secondary'}>
-                      {device.is_active ? 'Ativo' : 'Inativo'}
+                    <Badge variant={device.is_active ? "default" : "secondary"}>
+                      {device.is_active ? "Ativo" : "Inativo"}
                     </Badge>
                     <Button
                       variant="ghost"
@@ -255,33 +337,33 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
 
 // Type for beforeinstallprompt event
 interface BeforeInstallPromptEvent extends Event {
-  prompt: () => Promise<void>
-  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
 // Helper functions
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
-  const rawData = window.atob(base64)
-  const outputArray = new Uint8Array(rawData.length)
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
   for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i)
+    outputArray[i] = rawData.charCodeAt(i);
   }
-  return outputArray
+  return outputArray;
 }
 
 function arrayBufferToBase64(buffer: ArrayBuffer | null): string {
-  if (!buffer) return ''
-  const bytes = new Uint8Array(buffer)
-  let binary = ''
+  if (!buffer) return "";
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
   for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i])
+    binary += String.fromCharCode(bytes[i]);
   }
-  return window.btoa(binary)
+  return window.btoa(binary);
 }

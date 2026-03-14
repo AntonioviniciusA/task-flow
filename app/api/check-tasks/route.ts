@@ -10,12 +10,15 @@ export const dynamic = "force-dynamic";
  * Rota chamada pelo Cron-job.org para verificar e disparar notificações
  */
 export async function GET(request: Request) {
-  const authHeader = request.headers.get('authorization');
-  const cronSecret = process.env.token_Cron || process.env.CRON_SECRET;
-  const isDevelopment = process.env.NODE_ENV === 'development';
-  
+  const authHeader = request.headers.get("authorization");
+  const cronSecret = process.env.CRON_SECRET;
+  const isDevelopment = process.env.NODE_ENV === "development";
+
   // 1. Segurança: Verificar Token Bearer (ou permitir se for dev para testes locais)
-  if (!isDevelopment && (!authHeader || authHeader !== `Bearer ${cronSecret}`)) {
+  if (
+    !isDevelopment &&
+    (!authHeader || authHeader !== `Bearer ${cronSecret}`)
+  ) {
     console.error("[Cron] Acesso não autorizado");
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -69,14 +72,14 @@ export async function GET(request: Request) {
           body: description || "Você tem uma tarefa pendente",
           taskId: taskId,
           url: `/dashboard`,
-          urgency: task.priority === "high" ? "high" : "normal",
+          urgency: task.priority === "high" ? "high" : undefined,
           tag: taskId,
           actions: [
             { action: "complete", title: "✅ Concluir" },
             { action: "snooze", title: "⏰ Adiar 15min" },
           ],
         });
-        
+
         if (pushResult.successful > 0) {
           notificationsSent++;
         }
@@ -91,7 +94,12 @@ export async function GET(request: Request) {
       // 6. Tratar recorrência
       if (frequency && frequency !== "once") {
         const currentScheduled = new Date(task.scheduled_time as string);
-        const nextRun = calculateNextRun(currentScheduled, frequency, dayOfWeek, dayOfMonth);
+        const nextRun = calculateNextRun(
+          currentScheduled,
+          frequency,
+          dayOfWeek,
+          dayOfMonth,
+        );
 
         await db.execute({
           sql: "UPDATE tasks SET scheduled_time = ?, executed = 0, updated_at = ? WHERE id = ?",
@@ -104,11 +112,13 @@ export async function GET(request: Request) {
       success: true,
       checked: tasks.length,
       sent: notificationsSent,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
-
   } catch (error) {
     console.error("[Cron] Erro no processamento:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 },
+    );
   }
 }

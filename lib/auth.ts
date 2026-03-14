@@ -18,37 +18,43 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null;
         }
 
-        const email = credentials.email as string;
+        const email = (credentials.email as string).toLowerCase().trim();
         const password = credentials.password as string;
 
         try {
           const result = await db.execute({
-            sql: "SELECT * FROM users WHERE email = ?",
+            sql: "SELECT * FROM users WHERE LOWER(email) = ?",
             args: [email],
           });
 
           if (result.rows.length === 0) {
+            console.log(`[Auth] Usuário não encontrado: ${email}`);
             return null;
           }
 
-          const user = result.rows[0] as unknown as User;
+          const user = result.rows[0] as any;
 
-          const isValidPassword = await compare(
-            password,
-            user.password_hash || "",
-          );
+          // Verificar se existe o campo password_hash
+          if (!user.password_hash) {
+            console.error(`[Auth] Campo password_hash ausente para: ${email}`);
+            return null;
+          }
+
+          const isValidPassword = await compare(password, user.password_hash);
 
           if (!isValidPassword) {
+            console.log(`[Auth] Senha incorreta para: ${email}`);
             return null;
           }
 
+          console.log(`[Auth] Login bem-sucedido: ${email}`);
           return {
             id: user.id,
             email: user.email,
             name: user.name,
           };
         } catch (error) {
-          console.error("Auth error:", error);
+          console.error("[Auth] Erro durante a autorização:", error);
           return null;
         }
       },
@@ -107,12 +113,16 @@ export async function createUser(
   name: string,
 ): Promise<User | null> {
   try {
+    const normalizedEmail = email.toLowerCase().trim();
     const existingUser = await db.execute({
-      sql: "SELECT id FROM users WHERE email = ?",
-      args: [email],
+      sql: "SELECT id FROM users WHERE LOWER(email) = ?",
+      args: [normalizedEmail],
     });
 
     if (existingUser.rows.length > 0) {
+      console.log(
+        `[Auth] Tentativa de registro com email já existente: ${normalizedEmail}`,
+      );
       return null;
     }
 
@@ -123,18 +133,20 @@ export async function createUser(
     await db.execute({
       sql: `INSERT INTO users (id, email, name, password_hash, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?)`,
-      args: [id, email, name, passwordHash, now, now],
+      args: [id, normalizedEmail, name, passwordHash, now, now],
     });
+
+    console.log(`[Auth] Novo usuário criado: ${normalizedEmail}`);
 
     return {
       id,
-      email,
+      email: normalizedEmail,
       name,
       created_at: now,
       updated_at: now,
     };
   } catch (error) {
-    console.error("Error creating user:", error);
+    console.error("[Auth] Erro ao criar usuário:", error);
     return null;
   }
 }

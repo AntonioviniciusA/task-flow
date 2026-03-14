@@ -85,6 +85,19 @@ export async function PATCH(
     const now = new Date().toISOString();
 
     // Build update query dynamically
+    if (body.notification_time) {
+      const [hours, minutes] = body.notification_time.split(":").map(Number);
+      if (minutes % 5 !== 0) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "O horário deve ser em intervalos de 5 minutos",
+          },
+          { status: 400 },
+        );
+      }
+    }
+
     const updates: string[] = ["updated_at = ?"];
     const args: (string | number | null)[] = [now];
 

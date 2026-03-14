@@ -80,6 +80,19 @@ export async function POST(
       );
     }
 
+    if (body.notification_time) {
+      const [hours, minutes] = body.notification_time.split(":").map(Number);
+      if (minutes % 5 !== 0) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "O horário deve ser em intervalos de 5 minutos",
+          },
+          { status: 400 },
+        );
+      }
+    }
+
     const id = nanoid();
     const now = new Date().toISOString();
 

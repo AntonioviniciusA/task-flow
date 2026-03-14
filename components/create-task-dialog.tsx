@@ -43,9 +43,16 @@ export function CreateTaskDialog({
   const [frequency, setFrequency] = useState<TaskFrequency>("once");
   const [frequencyDayOfWeek, setFrequencyDayOfWeek] = useState<string>("0");
   const [frequencyDayOfMonth, setFrequencyDayOfMonth] = useState<string>("1");
-  const [notificationTime, setNotificationTime] = useState("");
+  const [notificationTime, setNotificationTime] = useState("09:00");
   const [priority, setPriority] = useState<TaskPriority>("medium");
   const [notificationEnabled, setNotificationEnabled] = useState(true);
+
+  // Extrair hora e minuto para os seletores
+  const [currentHour, currentMinute] = notificationTime.split(":");
+
+  const updateTime = (h: string, m: string) => {
+    setNotificationTime(`${h.padStart(2, "0")}:${m.padStart(2, "0")}`);
+  };
 
   function resetForm() {
     setTitle("");
@@ -54,7 +61,7 @@ export function CreateTaskDialog({
     setFrequency("once");
     setFrequencyDayOfWeek("0");
     setFrequencyDayOfMonth("1");
-    setNotificationTime("");
+    setNotificationTime("09:00");
     setPriority("medium");
     setNotificationEnabled(true);
   }
@@ -165,13 +172,36 @@ export function CreateTaskDialog({
                   <FieldLabel htmlFor="notificationTime">
                     Hora da Notificação
                   </FieldLabel>
-                  <Input
-                    id="notificationTime"
-                    type="time"
-                    value={notificationTime}
-                    onChange={(e) => setNotificationTime(e.target.value)}
-                    disabled={isLoading}
-                  />
+                  <div className="flex gap-2">
+                    <select
+                      value={parseInt(currentHour)}
+                      onChange={(e) =>
+                        updateTime(e.target.value, currentMinute)
+                      }
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {Array.from({ length: 24 }, (_, h) => (
+                        <option key={h} value={h}>
+                          {String(h).padStart(2, "0")}h
+                        </option>
+                      ))}
+                    </select>
+
+                    <select
+                      value={parseInt(currentMinute)}
+                      onChange={(e) => updateTime(currentHour, e.target.value)}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {Array.from({ length: 12 }, (_, i) => i * 5).map((m) => (
+                        <option key={m} value={m}>
+                          {String(m).padStart(2, "0")} min
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Intervalos de 5 minutos
+                  </p>
                 </Field>
               </div>
 
@@ -276,7 +306,6 @@ export function CreateTaskDialog({
                   checked={notificationEnabled}
                   onCheckedChange={setNotificationEnabled}
                   disabled={isLoading}
-                  className="scale-110"
                 />
               </Field>
             </FieldGroup>

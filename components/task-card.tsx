@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import useSWR from "swr";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,7 +24,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import type { Task } from "@/lib/types";
+import type { Task, NetworkContext } from "@/lib/types";
 import {
   MoreVertical,
   Check,
@@ -34,6 +35,7 @@ import {
   BellOff,
   Calendar,
   Flag,
+  Wifi,
 } from "lucide-react";
 import { EditTaskDialog } from "./edit-task-dialog";
 
@@ -41,6 +43,8 @@ interface TaskCardProps {
   task: Task;
   onUpdate: () => void;
 }
+
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 const priorityConfig = {
   low: { label: "Baixa", color: "bg-muted text-muted-foreground" },
@@ -58,6 +62,11 @@ const frequencyLabels: Record<string, string> = {
 const weekDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
 export function TaskCard({ task, onUpdate }: TaskCardProps) {
+  const { data: networkData } = useSWR<{
+    success: boolean;
+    data: NetworkContext[];
+  }>("/api/settings/networks", fetcher);
+
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -65,6 +74,10 @@ export function TaskCard({ task, onUpdate }: TaskCardProps) {
 
   const isCompleted = task.status === "completed";
   const priority = priorityConfig[task.priority];
+
+  const assignedNetwork = networkData?.data?.find(
+    (n) => n.id === task.network_context_id,
+  );
 
   async function handleComplete() {
     setIsUpdating(true);
@@ -245,16 +258,21 @@ export function TaskCard({ task, onUpdate }: TaskCardProps) {
 
             {formattedDate && (
               <Badge
-                variant="secondary"
-                className={cn(
-                  "text-xs",
-                  isOverdue
-                    ? "bg-destructive/20 text-destructive"
-                    : "bg-muted text-muted-foreground",
-                )}
+                variant="outline"
+                className="text-[10px] py-0 h-5 border-neutral-200"
               >
-                <Calendar className="h-3 w-3 mr-1" />
+                <Calendar className="h-3 w-3 mr-1 opacity-60" />
                 {formattedDate}
+              </Badge>
+            )}
+
+            {assignedNetwork && (
+              <Badge
+                variant="outline"
+                className="text-[10px] py-0 h-5 border-[#007AFF]/20 bg-[#007AFF]/5 text-[#007AFF]"
+              >
+                <Wifi className="h-3 w-3 mr-1" />
+                {assignedNetwork.name}
               </Badge>
             )}
 

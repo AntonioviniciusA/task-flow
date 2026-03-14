@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import useSWR from "swr";
 import {
   Dialog,
   DialogContent,
@@ -23,11 +24,13 @@ import {
 import { Field, FieldLabel, FieldGroup } from "@/components/ui/field";
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
+import { Wifi } from "lucide-react";
 import type {
   Task,
   TaskPriority,
   TaskFrequency,
   UpdateTaskInput,
+  NetworkContext,
 } from "@/lib/types";
 
 interface EditTaskDialogProps {
@@ -37,12 +40,19 @@ interface EditTaskDialogProps {
   onUpdate: () => void;
 }
 
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
+
 export function EditTaskDialog({
   task,
   open,
   onOpenChange,
   onUpdate,
 }: EditTaskDialogProps) {
+  const { data: networkData } = useSWR<{
+    success: boolean;
+    data: NetworkContext[];
+  }>("/api/settings/networks", fetcher);
+
   const [isLoading, setIsLoading] = useState(false);
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description || "");
@@ -63,6 +73,9 @@ export function EditTaskDialog({
   const [notificationEnabled, setNotificationEnabled] = useState(
     task.notification_enabled,
   );
+  const [networkContextId, setNetworkContextId] = useState<string>(
+    task.network_context_id || "none",
+  );
 
   // Extrair hora e minuto para os seletores
   const [currentHour, currentMinute] = (notificationTime || "09:00").split(":");
@@ -82,6 +95,7 @@ export function EditTaskDialog({
       setNotificationTime(task.notification_time || "09:00");
       setPriority(task.priority);
       setNotificationEnabled(task.notification_enabled);
+      setNetworkContextId(task.network_context_id || "none");
     }
   }, [task, open]);
 
@@ -111,6 +125,8 @@ export function EditTaskDialog({
         priority,
         notification_enabled: notificationEnabled,
         scheduled_time_iso: scheduledTimeIso,
+        network_context_id:
+          networkContextId === "none" ? null : networkContextId,
       };
 
       const response = await fetch(`/api/tasks/${task.id}`, {
@@ -311,6 +327,35 @@ export function EditTaskDialog({
                     <SelectItem value="high">Alta</SelectItem>
                   </SelectContent>
                 </Select>
+              </Field>
+
+              <Field>
+                <FieldLabel htmlFor="edit-networkContext">
+                  Localização (Wi-Fi)
+                </FieldLabel>
+                <Select
+                  value={networkContextId}
+                  onValueChange={setNetworkContextId}
+                  disabled={isLoading}
+                >
+                  <SelectTrigger id="edit-networkContext">
+                    <div className="flex items-center gap-2">
+                      <Wifi className="w-4 h-4 text-muted-foreground" />
+                      <SelectValue placeholder="Selecione um local" />
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Qualquer lugar</SelectItem>
+                    {networkData?.data?.map((net) => (
+                      <SelectItem key={net.id} value={net.id}>
+                        {net.name} ({net.context_slug})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="mt-1 text-[10px] text-muted-foreground leading-tight">
+                  A tarefa será priorizada quando você estiver nesta rede.
+                </p>
               </Field>
 
               <Field className="flex items-center justify-between">

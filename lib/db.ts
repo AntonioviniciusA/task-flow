@@ -29,9 +29,20 @@ export interface Task {
   notification_enabled: boolean;
   executed: boolean;
   scheduled_time: string | null;
+  network_context_id: string | null;
   created_at: string;
   updated_at: string;
   completed_at: string | null;
+}
+
+export interface NetworkContext {
+  id: string;
+  user_id: string;
+  name: string;
+  ip_range: string;
+  context_slug: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Device {

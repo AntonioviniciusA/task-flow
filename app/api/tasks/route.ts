@@ -102,8 +102,8 @@ export async function POST(
         id, user_id, title, description, due_date,
         frequency, frequency_day_of_week, frequency_day_of_month, notification_time,
         priority, status, notification_enabled, executed, scheduled_time,
-        created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, ?)`,
+        network_context_id, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, ?, ?)`,
       args: [
         id,
         session.user.id,
@@ -117,6 +117,7 @@ export async function POST(
         body.priority || "medium",
         "pending",
         body.notification_enabled !== false ? 1 : 0,
+        body.network_context_id || null,
         now,
         now,
       ],

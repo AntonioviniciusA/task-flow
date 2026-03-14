@@ -156,6 +156,11 @@ export async function PATCH(
       args.push(body.notification_enabled ? 1 : 0);
     }
 
+    if (body.network_context_id !== undefined) {
+      updates.push("network_context_id = ?");
+      args.push(body.network_context_id || null);
+    }
+
     args.push(id, session.user.id);
 
     await db.execute({

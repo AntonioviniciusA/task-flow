@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useSWRConfig } from "swr";
+import useSWR, { useSWRConfig } from "swr";
 import {
   Dialog,
   DialogContent,
@@ -24,18 +24,31 @@ import {
 import { Field, FieldLabel, FieldGroup } from "@/components/ui/field";
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
-import type { CreateTaskInput, TaskPriority, TaskFrequency } from "@/lib/types";
+import type {
+  CreateTaskInput,
+  TaskPriority,
+  TaskFrequency,
+  NetworkContext,
+} from "@/lib/types";
+import { Wifi } from "lucide-react";
 
 interface CreateTaskDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
+
 export function CreateTaskDialog({
   open,
   onOpenChange,
 }: CreateTaskDialogProps) {
   const { mutate } = useSWRConfig();
+  const { data: networkData } = useSWR<{
+    success: boolean;
+    data: NetworkContext[];
+  }>("/api/settings/networks", fetcher);
+
   const [isLoading, setIsLoading] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -46,6 +59,7 @@ export function CreateTaskDialog({
   const [notificationTime, setNotificationTime] = useState("09:00");
   const [priority, setPriority] = useState<TaskPriority>("medium");
   const [notificationEnabled, setNotificationEnabled] = useState(true);
+  const [networkContextId, setNetworkContextId] = useState<string>("none");
 
   // Extrair hora e minuto para os seletores
   const [currentHour, currentMinute] = notificationTime.split(":");
@@ -64,6 +78,7 @@ export function CreateTaskDialog({
     setNotificationTime("09:00");
     setPriority("medium");
     setNotificationEnabled(true);
+    setNetworkContextId("none");
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -93,6 +108,8 @@ export function CreateTaskDialog({
         priority,
         notification_enabled: notificationEnabled,
         scheduled_time_iso: scheduledTimeIso,
+        network_context_id:
+          networkContextId === "none" ? undefined : networkContextId,
       };
 
       const response = await fetch("/api/tasks", {
@@ -290,6 +307,35 @@ export function CreateTaskDialog({
                     <SelectItem value="high">Alta</SelectItem>
                   </SelectContent>
                 </Select>
+              </Field>
+
+              <Field>
+                <FieldLabel htmlFor="networkContext">
+                  Localização (Wi-Fi)
+                </FieldLabel>
+                <Select
+                  value={networkContextId}
+                  onValueChange={setNetworkContextId}
+                  disabled={isLoading}
+                >
+                  <SelectTrigger id="networkContext">
+                    <div className="flex items-center gap-2">
+                      <Wifi className="w-4 h-4 text-muted-foreground" />
+                      <SelectValue placeholder="Selecione um local" />
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Qualquer lugar</SelectItem>
+                    {networkData?.data?.map((net) => (
+                      <SelectItem key={net.id} value={net.id}>
+                        {net.name} ({net.context_slug})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="mt-1 text-[10px] text-muted-foreground leading-tight">
+                  A tarefa será priorizada quando você estiver nesta rede.
+                </p>
               </Field>
 
               <Field className="flex items-center justify-between">

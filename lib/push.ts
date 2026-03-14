@@ -1,6 +1,6 @@
 import webPush from 'web-push';
-import dotenv from "dotenv"
-dotenv.config()
+import { db } from './db';
+
 // Configurar VAPID
 webPush.setVapidDetails(
   process.env.VAPID_SUBJECT || 'mailto:antoniovinicius_@outlook.com',
@@ -53,8 +53,17 @@ export async function sendPushNotification(
       }
     );
     return { success: true };
-  } catch (error) {
-    console.error('Erro ao enviar notificação push:', error);
+  } catch (error: any) {
+    // Se o erro for 404 (Gone) ou 410 (Expired), removemos a subscription
+    if (error.statusCode === 404 || error.statusCode === 410) {
+      console.warn(`[Web Push] Removendo subscription inválida: ${subscription.endpoint}`);
+      await db.execute({
+        sql: 'DELETE FROM devices WHERE endpoint = ?',
+        args: [subscription.endpoint],
+      });
+    } else {
+      console.error('Erro ao enviar notificação push:', error);
+    }
     return { success: false, error };
   }
 }
@@ -68,7 +77,7 @@ export async function sendPushToMultipleDevices(
   );
 
   const successful = results.filter(
-    (r) => r.status === 'fulfilled' && r.value.success
+    (r) => r.status === 'fulfilled' && (r as any).value.success
   ).length;
   
   const failed = results.length - successful;

@@ -31,7 +31,6 @@ CREATE TABLE IF NOT EXISTS tasks (
   title TEXT NOT NULL,
   description TEXT,
   due_date TEXT,
-  due_time TEXT,
   frequency TEXT CHECK(frequency IN ('once', 'daily', 'weekly', 'monthly')) DEFAULT 'once',
   frequency_day_of_week INTEGER,
   frequency_day_of_month INTEGER,

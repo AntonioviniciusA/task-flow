@@ -3,6 +3,7 @@ import { TaskList } from '@/components/task-list'
 import { TaskListSkeleton } from '@/components/task-list-skeleton'
 import { CreateTaskButton } from '@/components/create-task-button'
 import { NotificationBanner } from '@/components/notification-banner'
+import { AiTaskInput } from '@/components/ai-task-input'
 
 export default function DashboardPage() {
   return (
@@ -14,6 +15,8 @@ export default function DashboardPage() {
         </div>
         <CreateTaskButton />
       </div>
+
+      <AiTaskInput />
 
       <NotificationBanner />
 

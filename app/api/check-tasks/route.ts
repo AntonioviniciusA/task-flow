@@ -69,14 +69,18 @@ export async function GET(request: Request) {
           args: [userId],
         }),
         db.execute({
-          sql: "SELECT persistent_interval FROM users WHERE id = ?",
+          sql: "SELECT persistent_interval, notification_sound, notification_vibration FROM users WHERE id = ?",
           args: [userId],
         }),
       ]);
 
-      const persistentInterval = userResult.rows[0]?.persistent_interval
-        ? Number(userResult.rows[0].persistent_interval)
+      const userPrefs = userResult.rows[0];
+      const persistentInterval = userPrefs?.persistent_interval
+        ? Number(userPrefs.persistent_interval)
         : 60;
+
+      const soundEnabled = userPrefs?.notification_sound !== 0;
+      const vibrationEnabled = userPrefs?.notification_vibration !== 0;
 
       const subscriptions = deviceResult.rows.map((row) => ({
         endpoint: row.endpoint as string,
@@ -100,6 +104,8 @@ export async function GET(request: Request) {
             url: `/dashboard/notification-action?taskId=${taskId}`,
             urgency: task.priority === "high" ? "high" : undefined,
             tag: taskId,
+            silent: !soundEnabled,
+            vibrate: vibrationEnabled ? [200, 100, 200] : [],
             actions: [
               { action: "complete", title: "✅ Concluir" },
               { action: "snooze", title: "⏰ Adiar" },

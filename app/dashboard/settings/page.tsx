@@ -152,7 +152,6 @@ export default function SettingsPage() {
 
   async function handleToggleNotifications() {
     if (notificationsEnabled) {
-      // Can't revoke permission via JS, inform user
       toast.info(
         "Para desativar, remova a permissão nas configurações do navegador",
       );
@@ -183,6 +182,7 @@ export default function SettingsPage() {
               p256dh: arrayBufferToBase64(subscription.getKey("p256dh")),
               auth: arrayBufferToBase64(subscription.getKey("auth")),
               user_agent: navigator.userAgent,
+              device_name: getDeviceName(),
             }),
           });
 
@@ -194,6 +194,19 @@ export default function SettingsPage() {
     } catch (error) {
       console.error(error);
       toast.error("Erro ao ativar notificações");
+    }
+  }
+
+  async function handleTestNotification() {
+    try {
+      const response = await fetch("/api/check-tasks");
+      if (response.ok) {
+        toast.success("Comando de verificação enviado!");
+      } else {
+        toast.error("Erro ao disparar verificação");
+      }
+    } catch (error) {
+      toast.error("Falha na conexão");
     }
   }
 
@@ -255,6 +268,24 @@ export default function SettingsPage() {
                 onCheckedChange={handleToggleNotifications}
               />
             </Field>
+
+            {notificationsEnabled && (
+              <div className="pt-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full sm:w-auto"
+                  onClick={handleTestNotification}
+                >
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Testar Notificações Agora
+                </Button>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Isso forçará o sistema a verificar tarefas pendentes e enviar
+                  alertas.
+                </p>
+              </div>
+            )}
 
             <Separator />
 

@@ -2,11 +2,18 @@ import webPush from 'web-push';
 import { db } from './db';
 
 // Configurar VAPID
-webPush.setVapidDetails(
-  process.env.VAPID_SUBJECT || 'mailto:antoniovinicius_@outlook.com',
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!
-);
+const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
+
+if (vapidPublicKey && vapidPrivateKey) {
+  webPush.setVapidDetails(
+    process.env.VAPID_SUBJECT || 'mailto:antoniovinicius_@outlook.com',
+    vapidPublicKey,
+    vapidPrivateKey
+  );
+} else {
+  console.warn('[Web Push] VAPID keys are not configured. Notifications will not work.');
+}
 
 export interface PushSubscription {
   endpoint: string;

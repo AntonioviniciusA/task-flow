@@ -74,7 +74,7 @@ function NotificationActionContent() {
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <Spinner className="w-8 h-8" />
+        <Spinner size="lg" />
         <p className="text-muted-foreground animate-pulse">
           Carregando detalhes...
         </p>
@@ -104,7 +104,11 @@ function NotificationActionContent() {
               onClick={() => handleAction("complete")}
               disabled={isProcessing}
             >
-              {isProcessing ? <Spinner /> : <Check className="w-6 h-6" />}
+              {isProcessing ? (
+                <Spinner size="sm" />
+              ) : (
+                <Check className="w-6 h-6" />
+              )}
               Concluir Agora
             </Button>
 
@@ -140,7 +144,7 @@ export default function NotificationActionPage() {
     <Suspense
       fallback={
         <div className="flex items-center justify-center min-h-screen">
-          <Spinner className="w-8 h-8" />
+          <Spinner size="lg" />
         </div>
       }
     >

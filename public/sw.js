@@ -85,12 +85,13 @@ self.addEventListener("push", (event) => {
     icon: data.icon || "/icone-notime.png",
     badge: data.badge || "/icone-notime.png",
     image: data.image,
-    vibrate: [200, 100, 200],
-    tag: data.tag || data.taskId || "task-notification",
+    vibrate: data.vibrate || [200, 100, 200],
+    silent: data.silent || false,
+    tag: String(data.tag || data.taskId || "task-notification"),
     renotify: true,
     requireInteraction: true,
     data: {
-      taskId: data.taskId,
+      taskId: String(data.taskId),
       url: data.url || "/dashboard/notification-action?taskId=" + data.taskId,
     },
     actions: data.actions || [

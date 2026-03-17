@@ -52,7 +52,7 @@ export async function POST(
           task.frequency as any,
           task.frequency_day_of_week,
           task.frequency_day_of_month,
-          task.all_day
+          task.all_day,
         );
 
         // Update due_date based on the difference
@@ -79,13 +79,18 @@ export async function POST(
       }
 
       // Log the interaction
-      await db.execute({
-        sql: `UPDATE notification_logs 
-              SET status = 'clicked', interacted_at = datetime('now'), action_taken = 'complete'
-              WHERE task_id = ? AND status = 'sent'
-              ORDER BY sent_at DESC LIMIT 1`,
+      // Encontrar o log mais recente enviado para esta tarefa
+      const recentLog = await db.execute({
+        sql: "SELECT id FROM notification_logs WHERE task_id = ? AND status = 'sent' ORDER BY sent_at DESC LIMIT 1",
         args: [id],
       });
+
+      if (recentLog.rows.length > 0) {
+        await db.execute({
+          sql: "UPDATE notification_logs SET status = 'clicked', interacted_at = ?, action_taken = 'complete' WHERE id = ?",
+          args: [now, recentLog.rows[0].id],
+        });
+      }
 
       const updatedResult = await db.execute({
         sql: "SELECT * FROM tasks WHERE id = ?",
@@ -117,13 +122,17 @@ export async function POST(
       await scheduleTask(id, newNotificationTime);
 
       // Log the interaction
-      await db.execute({
-        sql: `UPDATE notification_logs 
-              SET status = 'clicked', interacted_at = datetime('now'), action_taken = 'snooze'
-              WHERE task_id = ? AND status = 'sent'
-              ORDER BY sent_at DESC LIMIT 1`,
+      const recentLog = await db.execute({
+        sql: "SELECT id FROM notification_logs WHERE task_id = ? AND status = 'sent' ORDER BY sent_at DESC LIMIT 1",
         args: [id],
       });
+
+      if (recentLog.rows.length > 0) {
+        await db.execute({
+          sql: "UPDATE notification_logs SET status = 'clicked', interacted_at = ?, action_taken = 'snooze' WHERE id = ?",
+          args: [now, recentLog.rows[0].id],
+        });
+      }
 
       const updatedResult = await db.execute({
         sql: "SELECT * FROM tasks WHERE id = ?",

@@ -32,108 +32,189 @@ export async function POST(request: NextRequest) {
 function interpretTaskMessage(msg: string) {
   const text = msg.toLowerCase();
 
-  // Regras simples de parser para demonstração (Pode ser substituído por um LLM real)
   let date: string | null = null;
   let time: string | null = null;
   let priority: "low" | "normal" | "high" = "normal";
-  let recurrence: string | null = null;
-  let location_type: "arrival" | "departure" | null = null;
-  let location_place: string | null = null;
+  let recurrence: "once" | "daily" | "weekly" | "monthly" = "once";
+  let duration_minutes: number | null = null;
 
   const today = new Date();
 
-  // Data
-  if (text.includes("amanhã") || text.includes("amanha")) {
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
-    date = tomorrow.toISOString().split("T")[0];
-  } else if (text.includes("hoje") || text.includes("hj")) {
-    date = today.toISOString().split("T")[0];
-  } else {
-    // Verifica se tem um dia específico (ex: "dia 17")
-    const dayMatch = text.match(/dia\s(\d{1,2})/);
-    if (dayMatch) {
-      const targetDay = parseInt(dayMatch[1]);
-      const targetDate = new Date(today);
-      targetDate.setDate(targetDay);
-
-      // Se o dia já passou neste mês, assume que é para o próximo mês
-      if (targetDay < today.getDate()) {
-        targetDate.setMonth(targetDate.getMonth() + 1);
-      }
-      date = targetDate.toISOString().split("T")[0];
-    } else {
-      // Se não tem nenhuma indicação de data, assume que é hoje
-      date = today.toISOString().split("T")[0];
-    }
-  }
-
-  // Horário (ex: 15h, 16h20, 16:20, 3 da tarde, em 15 min)
-  const timeMatch =
-    text.match(/(\d{1,2})h(\d{2})?/) ||
-    text.match(/(\d{1,2}):(\d{2})/) ||
-    text.match(/(\d{1,2})\s?da tarde/);
-
-  if (timeMatch) {
-    let hour = parseInt(timeMatch[1]);
-    let minute = timeMatch[2] ? parseInt(timeMatch[2]) : 0;
-
-    if (text.includes("da tarde") && hour < 12) hour += 12;
-    time = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
-  } else {
-    // Verificar formato "em XX min"
-    const relativeMatch = text.match(/em\s(\d+)\s?min/);
-    if (relativeMatch) {
-      const minutesToAdd = parseInt(relativeMatch[1]);
-      const futureDate = new Date(today.getTime() + minutesToAdd * 60000);
-      date = futureDate.toISOString().split("T")[0];
-      time = `${String(futureDate.getHours()).padStart(2, "0")}:${String(futureDate.getMinutes()).padStart(2, "0")}`;
-    }
-  }
-
-  // Prioridade
-  if (text.includes("urgente") || text.includes("importante")) {
+  // 1. Prioridade (Urgente/Importante)
+  if (text.includes("urgente") || text.includes("prioridade alta")) {
+    priority = "high";
+  } else if (text.includes("importante")) {
     priority = "high";
   }
 
-  // Recorrência
-  if (text.includes("todo dia") || text.includes("diário")) {
+  // 2. Recorrência
+  if (
+    text.includes("todo dia") ||
+    text.includes("todos os dias") ||
+    text.includes("diário")
+  ) {
     recurrence = "daily";
-  } else if (text.includes("toda semana")) {
+  } else if (
+    text.includes("toda semana") ||
+    text.includes("toda segunda") ||
+    text.includes("toda terça") ||
+    text.includes("toda quarta") ||
+    text.includes("toda quinta") ||
+    text.includes("toda sexta") ||
+    text.includes("todo sábado") ||
+    text.includes("todo domingo")
+  ) {
     recurrence = "weekly";
+  } else if (text.includes("todo mês") || text.includes("todos os meses")) {
+    recurrence = "monthly";
   }
 
-  // Localização
-  if (text.includes("quando chegar em")) {
-    location_type = "arrival";
-    location_place = extractPlace(text, "quando chegar em");
-  } else if (text.includes("quando sair de")) {
-    location_type = "departure";
-    location_place = extractPlace(text, "quando sair de");
+  // 3. Tempo Relativo (em 30 min, daqui a 2 horas)
+  const relativeMinMatch = text.match(
+    /(?:em|daqui a)\s(\d+)\s?(?:minutos|min|m)/,
+  );
+  const relativeHourMatch = text.match(
+    /(?:em|daqui a)\s(\d+)\s?(?:horas|hora|h)/,
+  );
+
+  if (relativeMinMatch) {
+    const minutesToAdd = parseInt(relativeMinMatch[1]);
+    const futureDate = new Date(today.getTime() + minutesToAdd * 60000);
+    date = futureDate.toISOString().split("T")[0];
+    time = `${String(futureDate.getHours()).padStart(2, "0")}:${String(futureDate.getMinutes()).padStart(2, "0")}`;
+  } else if (relativeHourMatch) {
+    const hoursToAdd = parseInt(relativeHourMatch[1]);
+    const futureDate = new Date(today.getTime() + hoursToAdd * 3600000);
+    date = futureDate.toISOString().split("T")[0];
+    time = `${String(futureDate.getHours()).padStart(2, "0")}:${String(futureDate.getMinutes()).padStart(2, "0")}`;
   }
 
-  // Limpeza do título (remove palavras de comando)
+  // 4. Datas Humanas (amanhã, sexta, dia 20)
+  if (!date) {
+    if (text.includes("amanhã") || text.includes("amanha")) {
+      const tomorrow = new Date(today);
+      tomorrow.setDate(today.getDate() + 1);
+      date = tomorrow.toISOString().split("T")[0];
+    } else if (text.includes("hoje") || text.includes("hj")) {
+      date = today.toISOString().split("T")[0];
+    } else {
+      // Dias da semana
+      const daysOfWeek: Record<string, number> = {
+        domingo: 0,
+        segunda: 1,
+        terça: 2,
+        quarta: 3,
+        quinta: 4,
+        sexta: 5,
+        sábado: 6,
+      };
+      for (const day in daysOfWeek) {
+        if (text.includes(day)) {
+          const targetDay = daysOfWeek[day];
+          const currentDay = today.getDay();
+          let daysUntil = (targetDay - currentDay + 7) % 7;
+          if (daysUntil === 0) daysUntil = 7; // Próxima semana
+          const nextDate = new Date(today);
+          nextDate.setDate(today.getDate() + daysUntil);
+          date = nextDate.toISOString().split("T")[0];
+          break;
+        }
+      }
+
+      // Dia específico (ex: dia 20)
+      const dayMatch = text.match(/dia\s(\d{1,2})/);
+      if (!date && dayMatch) {
+        const targetDay = parseInt(dayMatch[1]);
+        const targetDate = new Date(today);
+        targetDate.setDate(targetDay);
+        if (targetDay < today.getDate()) {
+          targetDate.setMonth(targetDate.getMonth() + 1);
+        }
+        date = targetDate.toISOString().split("T")[0];
+      }
+    }
+  }
+
+  // Se nada foi definido, assume hoje
+  if (!date) date = today.toISOString().split("T")[0];
+
+  // 5. Horário Natural (às 3 da tarde, 7 da manhã, 14:30, 20h)
+  if (!time) {
+    const timeMatch =
+      text.match(/(\d{1,2})h(\d{2})?/) ||
+      text.match(/(\d{1,2}):(\d{2})/) ||
+      text.match(/(\d{1,2})\s?(?:da manhã|da tarde|da noite)/);
+
+    if (timeMatch) {
+      let hour = parseInt(timeMatch[1]);
+      let minute = timeMatch[2] ? parseInt(timeMatch[2]) : 0;
+
+      if (text.includes("da tarde") && hour < 12) hour += 12;
+      if (text.includes("da noite") && hour < 12) hour += 12;
+      if (text.includes("da manhã") && hour === 12) hour = 0;
+
+      time = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+    }
+  }
+
+  // 6. Duração (por 2 horas)
+  const durationMatch = text.match(
+    /por\s(\d+)\s?(?:horas|hora|h|minutos|min|m)/,
+  );
+  if (durationMatch) {
+    const val = parseInt(durationMatch[1]);
+    if (text.includes("hora") || text.includes(" h")) {
+      duration_minutes = val * 60;
+    } else {
+      duration_minutes = val;
+    }
+  }
+
+  // 7. Limpeza do Título
   let title = msg
     .replace(
-      /amanhã|amanha|hoje|hj|urgente|importante|todo dia|diário|toda semana/gi,
+      /(?:preciso|não esquecer de|lembrar de|tenho que|ir no|ir na|mandar|resolver isso)\s/gi,
+      "",
+    )
+    .replace(
+      /(?:amanhã|amanha|hoje|hj|urgente|importante|todo dia|diário|toda semana|todos os dias|toda segunda|toda terça|toda quarta|toda quinta|toda sexta|todo sábado|todo domingo|todo mês|todos os meses|prioridade alta)/gi,
       "",
     )
     .replace(/dia\s\d{1,2}/gi, "")
-    .replace(/em\s\d+\s?min/gi, "")
-    .replace(/quando chegar em\s?\w+|quando sair de\s?\w+/gi, "")
-    .replace(/\d{1,2}h(\d{2})?|\d{1,2}:\d{2}|\d{1,2}\s?da tarde/gi, "")
+    .replace(/(?:em|daqui a)\s\d+\s?(?:minutos|min|m|horas|hora|h)/gi, "")
+    .replace(/por\s\d+\s?(?:horas|hora|h|minutos|min|m)/gi, "")
+    .replace(
+      /\d{1,2}h(\d{2})?|\d{1,2}:\d{2}|\d{1,2}\s?(?:da manhã|da tarde|da noite|da tarde)/gi,
+      "",
+    )
+    .replace(/às\s|as\s/gi, "")
+    .replace(/\s+/g, " ")
     .trim();
 
+  // Primeira letra maiúscula
+  if (title) title = title.charAt(0).toUpperCase() + title.slice(1);
+
   // Decisão: Retornar tarefa ou pergunta
-  if (!title) {
+  if (!title || title.length < 2) {
     return {
       type: "question",
       question: "O que exatamente você precisa fazer?",
     };
   }
 
-  // Se a tarefa parece depender de tempo mas não tem horário (ex: tirar o lixo)
-  const timeDependentWords = ["tirar", "levar", "reunião", "encontro", "ligar"];
+  // Perguntar horário se for tarefa dependente de tempo mas sem hora
+  const timeDependentWords = [
+    "tirar",
+    "levar",
+    "reunião",
+    "encontro",
+    "ligar",
+    "aula",
+    "consulta",
+    "dentista",
+    "academia",
+    "estudar",
+  ];
   const isTimeDependent = timeDependentWords.some((w) =>
     title.toLowerCase().includes(w),
   );
@@ -153,11 +234,8 @@ function interpretTaskMessage(msg: string) {
       time,
       priority,
       recurrence,
-      location_trigger: {
-        type: location_type,
-        place: location_place,
-      },
-      duration_minutes: null,
+      location_trigger: { type: null, place: null },
+      duration_minutes,
     },
   };
 }

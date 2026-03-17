@@ -453,7 +453,7 @@ export default function SettingsPage() {
         <CardContent className="space-y-2 text-sm text-muted-foreground">
           <p>No Time PWA</p>
           <Separator />
-          <p>Versão Beta 1.18</p>
+          <p>Versão Beta 1.21</p>
           <p>Com suporte a notificações push e modo offline</p>
         </CardContent>
       </Card>

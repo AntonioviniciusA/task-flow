@@ -35,6 +35,19 @@ import {
   BellOff,
   Calendar,
   Flag,
+  Briefcase,
+  ShoppingCart,
+  Home,
+  Dumbbell,
+  BookOpen,
+  Plane,
+  Utensils,
+  Music,
+  Code,
+  Heart,
+  Smile,
+  Star,
+  Zap,
 } from "lucide-react";
 import { EditTaskDialog } from "./edit-task-dialog";
 
@@ -49,6 +62,22 @@ const priorityConfig = {
   low: { label: "Baixa", color: "bg-muted text-muted-foreground" },
   medium: { label: "Média", color: "bg-warning/20 text-warning-foreground" },
   high: { label: "Alta", color: "bg-destructive/20 text-destructive" },
+};
+
+const ICONS: Record<string, any> = {
+  briefcase: Briefcase,
+  "shopping-cart": ShoppingCart,
+  home: Home,
+  dumbbell: Dumbbell,
+  "book-open": BookOpen,
+  plane: Plane,
+  utensils: Utensils,
+  music: Music,
+  code: Code,
+  heart: Heart,
+  smile: Smile,
+  star: Star,
+  zap: Zap,
 };
 
 const frequencyLabels: Record<string, string> = {
@@ -155,6 +184,8 @@ export function TaskCard({ task, onUpdate }: TaskCardProps) {
   const isOverdue =
     task.due_date && new Date(task.due_date) < new Date() && !isCompleted;
 
+  const Icon = task.icon ? ICONS[task.icon] : null;
+
   return (
     <>
       <Card
@@ -181,16 +212,21 @@ export function TaskCard({ task, onUpdate }: TaskCardProps) {
                 {isCompleted && <Check className="h-3 w-3" />}
               </Button>
               <div className="min-w-0 flex-1">
-                <h3
-                  className={cn(
-                    "font-medium text-foreground truncate",
-                    isCompleted && "line-through text-muted-foreground",
+                <div className="flex items-start gap-2">
+                  {Icon && (
+                    <Icon className="w-4 h-4 text-muted-foreground shrink-0 mt-1" />
                   )}
-                >
-                  {task.title}
-                </h3>
+                  <h3
+                    className={cn(
+                      "font-medium text-foreground break-words",
+                      isCompleted && "line-through text-muted-foreground",
+                    )}
+                  >
+                    {task.title}
+                  </h3>
+                </div>
                 {task.description && (
-                  <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
+                  <p className="text-sm text-muted-foreground line-clamp-2 mt-1 break-words">
                     {task.description}
                   </p>
                 )}
@@ -239,8 +275,8 @@ export function TaskCard({ task, onUpdate }: TaskCardProps) {
         <CardContent className="pt-0">
           <div className="flex items-center gap-2 flex-wrap">
             <Badge
-              variant="secondary"
-              className={cn("text-xs", priority.color)}
+              variant="outline"
+              className={cn("text-[10px] py-0 h-5 border-0", priority.color)}
             >
               <Flag className="h-3 w-3 mr-1" />
               {priority.label}

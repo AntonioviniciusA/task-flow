@@ -200,6 +200,11 @@ export async function PATCH(
       args.push(body.all_day ? 1 : 0);
     }
 
+    if (body.icon !== undefined) {
+      updates.push("icon = ?");
+      args.push(body.icon || null);
+    }
+
     args.push(id, session.user.id);
 
     await db.execute({

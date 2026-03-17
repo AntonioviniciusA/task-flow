@@ -36,6 +36,7 @@ export interface Task {
   executed: boolean;
   scheduled_time: string | null;
   all_day: boolean;
+  icon?: string | null;
   created_at: string;
   updated_at: string;
   completed_at: string | null;
@@ -112,6 +113,7 @@ export interface CreateTaskInput {
   priority?: TaskPriority;
   notification_enabled?: boolean;
   all_day?: boolean;
+  icon?: string;
   scheduled_time_iso?: string;
   category_ids?: string[];
 }

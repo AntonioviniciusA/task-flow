@@ -33,7 +33,7 @@ export function WorkerTrigger() {
       navigator.serviceWorker.ready.then(async (registration: any) => {
         try {
           await registration.periodicSync.register("task-worker", {
-            minInterval: 60 * 1000, // 1 minuto
+            minInterval: 5 * 60 * 1000, // 5 minutos
           });
         } catch (e) {
           console.log(
@@ -43,8 +43,8 @@ export function WorkerTrigger() {
       });
     }
 
-    // Configura o intervalo de 60 segundos (enquanto a aba estiver aberta)
-    const interval = setInterval(triggerWorker, 60000);
+    // Configura o intervalo de 5 minutos (enquanto a aba estiver aberta)
+    const interval = setInterval(triggerWorker, 300000);
 
     return () => {
       clearInterval(interval);

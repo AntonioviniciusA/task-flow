@@ -21,15 +21,54 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Field, FieldLabel, FieldGroup } from "@/components/ui/field";
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
 import type { CreateTaskInput, TaskPriority, TaskFrequency } from "@/lib/types";
+import {
+  Briefcase,
+  ShoppingCart,
+  Home,
+  Dumbbell,
+  BookOpen,
+  Plane,
+  Utensils,
+  Music,
+  Code,
+  Heart,
+  Smile,
+  Star,
+  Zap,
+  Flag,
+  AlertCircle,
+  CheckCircle2,
+} from "lucide-react";
 
 interface CreateTaskDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
+
+const ICONS = [
+  { name: "Trabalho", icon: Briefcase, value: "briefcase" },
+  { name: "Compras", icon: ShoppingCart, value: "shopping-cart" },
+  { name: "Casa", icon: Home, value: "home" },
+  { name: "Saúde", icon: Dumbbell, value: "dumbbell" },
+  { name: "Estudos", icon: BookOpen, value: "book-open" },
+  { name: "Viagem", icon: Plane, value: "plane" },
+  { name: "Comida", icon: Utensils, value: "utensils" },
+  { name: "Lazer", icon: Music, value: "music" },
+  { name: "Código", icon: Code, value: "code" },
+  { name: "Pessoal", icon: Heart, value: "heart" },
+  { name: "Outros", icon: Smile, value: "smile" },
+  { name: "Importante", icon: Star, value: "star" },
+  { name: "Urgente", icon: Zap, value: "zap" },
+];
 
 export function CreateTaskDialog({
   open,
@@ -48,6 +87,7 @@ export function CreateTaskDialog({
   const [priority, setPriority] = useState<TaskPriority>("medium");
   const [notificationEnabled, setNotificationEnabled] = useState(true);
   const [allDay, setAllDay] = useState(false);
+  const [selectedIcon, setSelectedIcon] = useState<string | null>(null);
 
   // Extrair hora e minuto para os seletores
   const [currentHour, currentMinute] = notificationTime.split(":");
@@ -67,6 +107,7 @@ export function CreateTaskDialog({
     setPriority("medium");
     setNotificationEnabled(true);
     setAllDay(false);
+    setSelectedIcon(null);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -122,6 +163,7 @@ export function CreateTaskDialog({
         priority,
         notification_enabled: notificationEnabled,
         all_day: allDay,
+        icon: selectedIcon || undefined,
         scheduled_time_iso: scheduledTimeIso,
       };
 
@@ -162,14 +204,67 @@ export function CreateTaskDialog({
             <FieldGroup className="py-4">
               <Field>
                 <FieldLabel htmlFor="title">Título</FieldLabel>
-                <Input
-                  id="title"
-                  placeholder="O que você precisa fazer?"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  required
-                  disabled={isLoading}
-                />
+                <div className="flex gap-2">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="w-10 h-10 p-0 shrink-0"
+                        type="button"
+                      >
+                        {selectedIcon ? (
+                          (() => {
+                            const Icon = ICONS.find(
+                              (i) => i.value === selectedIcon,
+                            )?.icon;
+                            return Icon ? (
+                              <Icon className="w-5 h-5" />
+                            ) : (
+                              <Smile className="w-5 h-5" />
+                            );
+                          })()
+                        ) : (
+                          <Smile className="w-5 h-5 text-muted-foreground" />
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-64 p-2" align="start">
+                      <div className="grid grid-cols-4 gap-2">
+                        {ICONS.map((item) => (
+                          <Button
+                            key={item.value}
+                            variant={
+                              selectedIcon === item.value ? "default" : "ghost"
+                            }
+                            className="w-full h-10 p-0"
+                            onClick={() => setSelectedIcon(item.value)}
+                            type="button"
+                            title={item.name}
+                          >
+                            <item.icon className="w-5 h-5" />
+                          </Button>
+                        ))}
+                        <Button
+                          variant={selectedIcon === null ? "default" : "ghost"}
+                          className="w-full h-10 p-0"
+                          onClick={() => setSelectedIcon(null)}
+                          type="button"
+                          title="Sem ícone"
+                        >
+                          <span className="text-xs">X</span>
+                        </Button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                  <Input
+                    id="title"
+                    placeholder="O que você precisa fazer?"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    required
+                    disabled={isLoading}
+                  />
+                </div>
               </Field>
 
               <Field>

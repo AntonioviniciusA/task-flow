@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   status TEXT CHECK(status IN ('pending', 'in_progress', 'completed', 'cancelled')) DEFAULT 'pending',
   notification_enabled INTEGER DEFAULT 1,
   all_day INTEGER DEFAULT 0,
+  icon TEXT,
   executed INTEGER DEFAULT 0,
   scheduled_time TEXT,
   created_at TEXT DEFAULT (datetime('now')),

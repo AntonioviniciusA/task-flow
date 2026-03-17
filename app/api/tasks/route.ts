@@ -101,9 +101,9 @@ export async function POST(
       sql: `INSERT INTO tasks (
         id, user_id, title, description, due_date,
         frequency, frequency_day_of_week, frequency_day_of_month, notification_time,
-        priority, status, notification_enabled, all_day, executed, scheduled_time,
+        priority, status, notification_enabled, all_day, icon, executed, scheduled_time,
         created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, ?)`,
       args: [
         id,
         session.user.id,
@@ -118,6 +118,7 @@ export async function POST(
         "pending",
         body.notification_enabled !== false ? 1 : 0,
         body.all_day ? 1 : 0,
+        body.icon || null,
         now,
         now,
       ],
@@ -177,6 +178,7 @@ export async function POST(
       status: "pending",
       notification_enabled: body.notification_enabled !== false,
       all_day: !!body.all_day,
+      icon: body.icon || null,
       executed: false,
       scheduled_time: finalScheduledTime,
       created_at: now,

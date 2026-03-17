@@ -8,7 +8,8 @@ export function calculateNextRun(
   currentDate: Date,
   frequency: TaskFrequency,
   dayOfWeek?: number | null,
-  dayOfMonth?: number | null
+  dayOfMonth?: number | null,
+  allDay?: boolean
 ): Date {
   const next = new Date(currentDate);
 
@@ -20,7 +21,6 @@ export function calculateNextRun(
       // Se tivermos um dia da semana específico (0-6)
       if (dayOfWeek !== null && dayOfWeek !== undefined) {
         next.setDate(next.getDate() + 7);
-        // Ajusta para o dia da semana correto se necessário (embora o cron/scheduler deva lidar com isso na primeira vez)
       } else {
         next.setDate(next.getDate() + 7);
       }
@@ -28,7 +28,6 @@ export function calculateNextRun(
     case 'monthly':
       if (dayOfMonth !== null && dayOfMonth !== undefined) {
         next.setMonth(next.getMonth() + 1);
-        // Tenta manter o mesmo dia do mês
         next.setDate(dayOfMonth);
       } else {
         next.setMonth(next.getMonth() + 1);
@@ -37,6 +36,11 @@ export function calculateNextRun(
     default:
       // 'once' não tem próxima execução
       break;
+  }
+
+  // Se for "dia todo", reseta para o primeiro horário (09:00) do novo dia
+  if (allDay) {
+    next.setHours(9, 0, 0, 0);
   }
 
   return next;

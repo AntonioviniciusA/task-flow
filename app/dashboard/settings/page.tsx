@@ -33,11 +33,8 @@ import {
   Moon,
   Sun,
   Monitor,
-  Wifi,
-  Plus,
-  MapPin,
 } from "lucide-react";
-import type { Device, NetworkContext } from "@/lib/types";
+import type { Device } from "@/lib/types";
 import { Input } from "@/components/ui/input";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -48,28 +45,36 @@ export default function SettingsPage() {
     "/api/devices",
     fetcher,
   );
-  const { data: networkData, mutate: mutateNetworks } = useSWR<{
-    success: boolean;
-    data: NetworkContext[];
-  }>("/api/settings/networks", fetcher);
-  const { data: contextData } = useSWR<{ context: string; ip: string }>(
-    "/api/context",
-    fetcher,
-  );
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [persistentInterval, setPersistentInterval] = useState("60");
+  const [notificationSound, setNotificationSound] = useState(true);
+  const [notificationVibration, setNotificationVibration] = useState(true);
+
   const [isInstallable, setIsInstallable] = useState(false);
   const [deferredPrompt, setDeferredPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
 
-  const [isAddingNetwork, setIsAddingNetwork] = useState(false);
-  const [newNetwork, setNewNetwork] = useState({
-    name: "",
-    ip_range: "",
-    context_slug: "home",
-  });
-
   useEffect(() => {
+    // Load settings from API
+    async function loadSettings() {
+      try {
+        const res = await fetch("/api/settings/notifications");
+        if (res.ok) {
+          const result = await res.json();
+          if (result.success) {
+            setPersistentInterval(String(result.data.persistent_interval));
+            setNotificationSound(result.data.notification_sound);
+            setNotificationVibration(result.data.notification_vibration);
+          }
+        }
+      } catch (error) {
+        console.error("Erro ao carregar configurações:", error);
+      }
+    }
+
+    loadSettings();
+
     // Check notification permission
     if ("Notification" in window) {
       setNotificationsEnabled(Notification.permission === "granted");
@@ -86,6 +91,31 @@ export default function SettingsPage() {
     return () =>
       window.removeEventListener("beforeinstallprompt", handleBeforeInstall);
   }, []);
+
+  const updateSetting = async (key: string, value: string | boolean) => {
+    // Update local state first for responsiveness
+    if (key === "persistent_interval") setPersistentInterval(String(value));
+    if (key === "notification_sound") setNotificationSound(Boolean(value));
+    if (key === "notification_vibration")
+      setNotificationVibration(Boolean(value));
+
+    try {
+      const response = await fetch("/api/settings/notifications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [key]: value }),
+      });
+
+      if (response.ok) {
+        toast.success("Configuração salva");
+      } else {
+        toast.error("Erro ao salvar configuração");
+      }
+    } catch (error) {
+      console.error("Erro ao salvar configuração:", error);
+      toast.error("Erro na conexão");
+    }
+  };
 
   async function handleInstallPWA() {
     if (!deferredPrompt) return;
@@ -167,54 +197,7 @@ export default function SettingsPage() {
     }
   }
 
-  async function handleAddNetwork() {
-    if (!newNetwork.name || !newNetwork.ip_range) {
-      toast.error("Preencha todos os campos");
-      return;
-    }
-
-    try {
-      const response = await fetch("/api/settings/networks", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newNetwork),
-      });
-
-      if (response.ok) {
-        toast.success("Rede adicionada!");
-        setNewNetwork({ name: "", ip_range: "", context_slug: "home" });
-        setIsAddingNetwork(false);
-        mutateNetworks();
-      } else {
-        toast.error("Erro ao adicionar rede");
-      }
-    } catch {
-      toast.error("Erro ao adicionar rede");
-    }
-  }
-
-  async function handleRemoveNetwork(id: string) {
-    try {
-      const response = await fetch("/api/settings/networks", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id }),
-      });
-
-      if (response.ok) {
-        toast.success("Rede removida");
-        mutateNetworks();
-      } else {
-        toast.error("Erro ao remover rede");
-      }
-    } catch {
-      toast.error("Erro ao remover rede");
-    }
-  }
-
   const devices = data?.data || [];
-  const networks = networkData?.data || [];
-  const currentIp = contextData?.ip || "";
 
   return (
     <div className="space-y-6">
@@ -258,7 +241,7 @@ export default function SettingsPage() {
             Configure como você recebe lembretes das tarefas
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-6">
           <FieldGroup>
             <Field className="flex items-center justify-between">
               <div>
@@ -272,6 +255,77 @@ export default function SettingsPage() {
                 onCheckedChange={handleToggleNotifications}
               />
             </Field>
+
+            <Separator />
+
+            <div className="space-y-4 pt-2">
+              <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                Preferências de Alerta
+              </h4>
+
+              <Field className="flex items-center justify-between">
+                <div>
+                  <FieldLabel className="mb-0">Som</FieldLabel>
+                  <p className="text-xs text-muted-foreground">
+                    Tocar som ao receber notificação
+                  </p>
+                </div>
+                <Switch
+                  checked={notificationSound}
+                  onCheckedChange={(v) =>
+                    updateSetting("notification_sound", v)
+                  }
+                />
+              </Field>
+
+              <Field className="flex items-center justify-between">
+                <div>
+                  <FieldLabel className="mb-0">Vibração</FieldLabel>
+                  <p className="text-xs text-muted-foreground">
+                    Vibrar o dispositivo
+                  </p>
+                </div>
+                <Switch
+                  checked={notificationVibration}
+                  onCheckedChange={(v) =>
+                    updateSetting("notification_vibration", v)
+                  }
+                />
+              </Field>
+
+              <Separator />
+
+              <div className="space-y-4 pt-2">
+                <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                  Notificações Persistentes
+                </h4>
+                <Field>
+                  <FieldLabel htmlFor="interval-select">
+                    Intervalo de Reenvio
+                  </FieldLabel>
+                  <Select
+                    value={persistentInterval}
+                    onValueChange={(v) =>
+                      updateSetting("persistent_interval", v)
+                    }
+                  >
+                    <SelectTrigger id="interval-select">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="15">A cada 15 minutos</SelectItem>
+                      <SelectItem value="30">A cada 30 minutos</SelectItem>
+                      <SelectItem value="60">A cada 1 hora</SelectItem>
+                      <SelectItem value="120">A cada 2 horas</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Frequência com que as notificações não concluídas serão
+                    reenviadas
+                  </p>
+                </Field>
+              </div>
+            </div>
           </FieldGroup>
         </CardContent>
       </Card>
@@ -319,152 +373,6 @@ export default function SettingsPage() {
               </Select>
             </Field>
           </FieldGroup>
-        </CardContent>
-      </Card>
-
-      {/* Redes Conhecidas */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Wifi className="w-5 h-5" />
-                Redes Conhecidas
-              </CardTitle>
-              <CardDescription>
-                Defina contextos baseados na rede Wi-Fi/IP atual
-              </CardDescription>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsAddingNetwork(!isAddingNetwork)}
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Adicionar
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {isAddingNetwork && (
-            <div className="p-4 rounded-xl border border-primary/20 bg-primary/5 space-y-4 animate-in fade-in slide-in-from-top-2">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field>
-                  <FieldLabel>Nome da Rede</FieldLabel>
-                  <Input
-                    placeholder="Ex: Wi-Fi de Casa"
-                    value={newNetwork.name}
-                    onChange={(e) =>
-                      setNewNetwork({ ...newNetwork, name: e.target.value })
-                    }
-                  />
-                </Field>
-                <Field>
-                  <FieldLabel>IP ou Range CIDR</FieldLabel>
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Ex: 192.168.0.0/24"
-                      value={newNetwork.ip_range}
-                      onChange={(e) =>
-                        setNewNetwork({
-                          ...newNetwork,
-                          ip_range: e.target.value,
-                        })
-                      }
-                    />
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() =>
-                        setNewNetwork({ ...newNetwork, ip_range: currentIp })
-                      }
-                    >
-                      Meu IP
-                    </Button>
-                  </div>
-                </Field>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field>
-                  <FieldLabel>Contexto</FieldLabel>
-                  <Select
-                    value={newNetwork.context_slug}
-                    onValueChange={(v) =>
-                      setNewNetwork({ ...newNetwork, context_slug: v })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="home">Casa</SelectItem>
-                      <SelectItem value="work">Trabalho</SelectItem>
-                      <SelectItem value="other">Outro</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </Field>
-              </div>
-              <div className="flex justify-end gap-2 pt-2">
-                <Button
-                  variant="ghost"
-                  onClick={() => setIsAddingNetwork(false)}
-                >
-                  Cancelar
-                </Button>
-                <Button onClick={handleAddNetwork}>Salvar Rede</Button>
-              </div>
-            </div>
-          )}
-
-          {networks.length === 0 ? (
-            <div className="text-center py-6 text-muted-foreground border-2 border-dashed rounded-xl">
-              <p>Nenhuma rede cadastrada</p>
-              <p className="text-xs">
-                Adicione sua rede atual para ativar o contexto
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {networks.map((net) => (
-                <div
-                  key={net.id}
-                  className="flex items-center justify-between p-4 rounded-xl bg-muted/30 border border-neutral-100 dark:border-neutral-800"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-full bg-primary/10">
-                      <MapPin className="w-4 h-4 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-semibold">{net.name}</p>
-                      <p className="text-xs text-muted-foreground font-mono">
-                        {net.ip_range}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Badge variant="secondary" className="capitalize">
-                      {net.context_slug}
-                    </Badge>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-destructive hover:bg-destructive/10"
-                      onClick={() => handleRemoveNetwork(net.id)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {currentIp && (
-            <p className="text-xs text-center text-muted-foreground pt-2">
-              Seu IP atual detectado:{" "}
-              <span className="font-mono">{currentIp}</span>
-            </p>
-          )}
         </CardContent>
       </Card>
 

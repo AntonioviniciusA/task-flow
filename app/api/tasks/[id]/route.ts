@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
-import { scheduleTask, cancelTask } from "@/lib/scheduler";
+import { scheduleTask, cancelTask, calculateNextRun } from "@/lib/scheduler";
 import type { ApiResponse, Task, UpdateTaskInput } from "@/lib/types";
 
 interface RouteContext {
@@ -142,12 +142,51 @@ export async function PATCH(
     }
 
     if (body.status !== undefined) {
-      updates.push("status = ?");
-      args.push(body.status);
+      if (
+        body.status === "completed" &&
+        currentTask.frequency &&
+        currentTask.frequency !== "once"
+      ) {
+        // Handle recurrence: instead of marking as completed forever, schedule the next run
+        const currentScheduled = currentTask.scheduled_time
+          ? new Date(currentTask.scheduled_time)
+          : new Date();
+        const nextRun = calculateNextRun(
+          currentScheduled,
+          currentTask.frequency as any,
+          currentTask.frequency_day_of_week,
+          currentTask.frequency_day_of_month,
+          currentTask.all_day || !!body.all_day,
+        );
 
-      if (body.status === "completed") {
-        updates.push("completed_at = ?");
-        args.push(now);
+        // Update due_date based on the difference
+        let nextDueDate = currentTask.due_date;
+        if (currentTask.due_date) {
+          const oldDueDate = new Date(currentTask.due_date);
+          const diffTime = nextRun.getTime() - currentScheduled.getTime();
+          const newDueDate = new Date(oldDueDate.getTime() + diffTime);
+          nextDueDate = newDueDate.toISOString().split("T")[0];
+        }
+
+        updates.push("status = ?");
+        args.push("pending"); // Keep it pending for the next recurrence
+
+        updates.push("due_date = ?");
+        args.push(nextDueDate);
+
+        updates.push("scheduled_time = ?");
+        args.push(nextRun.toISOString());
+
+        updates.push("executed = ?");
+        args.push(0);
+      } else {
+        updates.push("status = ?");
+        args.push(body.status);
+
+        if (body.status === "completed") {
+          updates.push("completed_at = ?");
+          args.push(now);
+        }
       }
     }
 
@@ -156,9 +195,9 @@ export async function PATCH(
       args.push(body.notification_enabled ? 1 : 0);
     }
 
-    if (body.network_context_id !== undefined) {
-      updates.push("network_context_id = ?");
-      args.push(body.network_context_id || null);
+    if (body.all_day !== undefined) {
+      updates.push("all_day = ?");
+      args.push(body.all_day ? 1 : 0);
     }
 
     args.push(id, session.user.id);
@@ -174,7 +213,15 @@ export async function PATCH(
       body.notification_time ?? currentTask.notification_time;
     const notificationEnabled =
       body.notification_enabled ?? currentTask.notification_enabled;
-    const isCompleted = (body.status ?? currentTask.status) === "completed";
+    const allDay = body.all_day ?? currentTask.all_day;
+
+    // If it was marked as completed but it's recurring, it actually stayed pending
+    const isActuallyCompleted =
+      body.status === "completed" &&
+      (!currentTask.frequency || currentTask.frequency === "once");
+    const isCompleted =
+      isActuallyCompleted ||
+      (body.status === undefined && currentTask.status === "completed");
     const isCancelled = (body.status ?? currentTask.status) === "cancelled";
 
     // Cancel existing notification if needed
@@ -193,11 +240,30 @@ export async function PATCH(
         body.frequency !== undefined ||
         body.frequency_day_of_week !== undefined ||
         body.frequency_day_of_month !== undefined ||
-        body.scheduled_time_iso !== undefined;
+        body.all_day !== undefined ||
+        body.scheduled_time_iso !== undefined ||
+        (body.status === "completed" &&
+          currentTask.frequency &&
+          currentTask.frequency !== "once"); // Reschedule if it recurred
 
       if (needsReschedule || !currentTask.scheduled_time) {
-        if (body.scheduled_time_iso) {
+        // If it recurred, the DB already has the new scheduled_time, but we might overwrite it here if we call scheduleTask.
+        // Actually, if it recurred, we already updated scheduled_time in the DB query above.
+        // We should only call scheduleTask if we have a new scheduled_time_iso from the client, OR if we need to recalculate.
+        if (
+          body.status === "completed" &&
+          currentTask.frequency &&
+          currentTask.frequency !== "once"
+        ) {
+          // Do nothing, already handled in the DB update above
+        } else if (body.scheduled_time_iso) {
           const scheduledDate = new Date(body.scheduled_time_iso);
+          if (!isNaN(scheduledDate.getTime())) {
+            await scheduleTask(id, scheduledDate);
+          }
+        } else if (allDay && dueDate) {
+          // Para "dia todo", o primeiro horário é 09:00
+          const scheduledDate = new Date(`${dueDate}T09:00`);
           if (!isNaN(scheduledDate.getTime())) {
             await scheduleTask(id, scheduledDate);
           }

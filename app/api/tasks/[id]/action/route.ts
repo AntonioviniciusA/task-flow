@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
-import { scheduleTask, cancelTask } from "@/lib/scheduler";
+import { scheduleTask, cancelTask, calculateNextRun } from "@/lib/scheduler";
 import type { ApiResponse, Task } from "@/lib/types";
 
 interface RouteContext {
@@ -42,14 +42,41 @@ export async function POST(
     const now = new Date().toISOString();
 
     if (action === "complete") {
-      // Mark task as completed
-      await db.execute({
-        sql: `UPDATE tasks SET status = 'completed', completed_at = ?, executed = 1, updated_at = ? WHERE id = ?`,
-        args: [now, now, id],
-      });
+      // Handle recurrence if applicable
+      if (task.frequency && task.frequency !== "once") {
+        const currentScheduled = task.scheduled_time
+          ? new Date(task.scheduled_time)
+          : new Date();
+        const nextRun = calculateNextRun(
+          currentScheduled,
+          task.frequency as any,
+          task.frequency_day_of_week,
+          task.frequency_day_of_month,
+          task.all_day
+        );
 
-      // Cancel scheduled notification
-      await cancelTask(id);
+        // Update due_date based on the difference
+        let nextDueDate = task.due_date;
+        if (task.due_date) {
+          const oldDueDate = new Date(task.due_date);
+          const diffTime = nextRun.getTime() - currentScheduled.getTime();
+          const newDueDate = new Date(oldDueDate.getTime() + diffTime);
+          nextDueDate = newDueDate.toISOString().split("T")[0];
+        }
+
+        await db.execute({
+          sql: `UPDATE tasks SET scheduled_time = ?, due_date = ?, executed = 0, updated_at = ? WHERE id = ?`,
+          args: [nextRun.toISOString(), nextDueDate, now, id],
+        });
+      } else {
+        // Mark task as completed
+        await db.execute({
+          sql: `UPDATE tasks SET status = 'completed', completed_at = ?, executed = 1, updated_at = ? WHERE id = ?`,
+          args: [now, now, id],
+        });
+        // Cancel scheduled notification
+        await cancelTask(id);
+      }
 
       // Log the interaction
       await db.execute({

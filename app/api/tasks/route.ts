@@ -101,9 +101,9 @@ export async function POST(
       sql: `INSERT INTO tasks (
         id, user_id, title, description, due_date,
         frequency, frequency_day_of_week, frequency_day_of_month, notification_time,
-        priority, status, notification_enabled, executed, scheduled_time,
-        network_context_id, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, ?, ?)`,
+        priority, status, notification_enabled, all_day, executed, scheduled_time,
+        created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, ?)`,
       args: [
         id,
         session.user.id,
@@ -117,7 +117,7 @@ export async function POST(
         body.priority || "medium",
         "pending",
         body.notification_enabled !== false ? 1 : 0,
-        body.network_context_id || null,
+        body.all_day ? 1 : 0,
         now,
         now,
       ],
@@ -129,6 +129,13 @@ export async function POST(
       if (body.scheduled_time_iso) {
         // Usa o ISO enviado pelo cliente (que já está no UTC correto)
         const scheduledDate = new Date(body.scheduled_time_iso);
+        if (!isNaN(scheduledDate.getTime())) {
+          await scheduleTask(id, scheduledDate);
+          finalScheduledTime = scheduledDate.toISOString();
+        }
+      } else if (body.all_day && body.due_date) {
+        // Para "dia todo", o primeiro horário é 09:00
+        const scheduledDate = new Date(`${body.due_date}T09:00`);
         if (!isNaN(scheduledDate.getTime())) {
           await scheduleTask(id, scheduledDate);
           finalScheduledTime = scheduledDate.toISOString();
@@ -169,6 +176,7 @@ export async function POST(
       priority: body.priority || "medium",
       status: "pending",
       notification_enabled: body.notification_enabled !== false,
+      all_day: !!body.all_day,
       executed: false,
       scheduled_time: finalScheduledTime,
       created_at: now,

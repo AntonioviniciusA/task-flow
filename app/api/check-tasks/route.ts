@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { calculateNextRun } from "@/lib/scheduler";
 import { sendPushToMultipleDevices } from "@/lib/push";
 import { auth } from "@/lib/auth";
 
@@ -53,11 +52,20 @@ export async function GET(request: Request) {
       const dayOfWeek = task.frequency_day_of_week as number | null;
       const dayOfMonth = task.frequency_day_of_month as number | null;
 
-      // 3. Buscar dispositivos (subscriptions) do usuário
+      // 3. Buscar dispositivos (subscriptions) do usuário e configurações
       const deviceResult = await db.execute({
         sql: "SELECT endpoint, p256dh, auth FROM devices WHERE user_id = ? AND is_active = 1",
         args: [userId],
       });
+
+      const userResult = await db.execute({
+        sql: "SELECT persistent_interval FROM users WHERE id = ?",
+        args: [userId],
+      });
+
+      const persistentInterval = userResult.rows[0]?.persistent_interval 
+        ? Number(userResult.rows[0].persistent_interval) 
+        : 60;
 
       const subscriptions = deviceResult.rows.map((row) => ({
         endpoint: row.endpoint as string,
@@ -73,12 +81,12 @@ export async function GET(request: Request) {
           title: title,
           body: description || "Você tem uma tarefa pendente",
           taskId: taskId,
-          url: `/dashboard`,
+          url: `/dashboard/notification-action?taskId=${taskId}`,
           urgency: task.priority === "high" ? "high" : undefined,
           tag: taskId,
           actions: [
             { action: "complete", title: "✅ Concluir" },
-            { action: "snooze", title: "⏰ Adiar 15min" },
+            { action: "snooze", title: "⏰ Adiar" },
           ],
         });
 
@@ -87,27 +95,31 @@ export async function GET(request: Request) {
         }
       }
 
-      // 5. Marcar como executada para evitar duplicidade
-      await db.execute({
-        sql: "UPDATE tasks SET executed = 1, updated_at = ? WHERE id = ?",
-        args: [new Date().toISOString(), taskId],
-      });
-
-      // 6. Tratar recorrência
-      if (frequency && frequency !== "once") {
-        const currentScheduled = new Date(task.scheduled_time as string);
-        const nextRun = calculateNextRun(
-          currentScheduled,
-          frequency,
-          dayOfWeek,
-          dayOfMonth,
-        );
-
-        await db.execute({
-          sql: "UPDATE tasks SET scheduled_time = ?, executed = 0, updated_at = ? WHERE id = ?",
-          args: [nextRun.toISOString(), new Date().toISOString(), taskId],
-        });
+      // 5. Tornar a notificação persistente: adiar automaticamente
+      // Se for "dia todo", tentamos seguir a escala 09h, 14h, 19h
+      // Se não, usamos o intervalo configurado pelo usuário
+      let nextReminder: Date;
+      const allDay = !!task.all_day;
+      
+      if (allDay) {
+        const today = new Date();
+        const hours = [9, 14, 19];
+        let nextHour = hours.find(h => h > today.getHours());
+        
+        if (nextHour) {
+          nextReminder = new Date(today.getFullYear(), today.getMonth(), today.getDate(), nextHour, 0, 0);
+        } else {
+          // Já passou das 19h, usa o intervalo persistente configurado
+          nextReminder = new Date(Date.now() + persistentInterval * 60 * 1000);
+        }
+      } else {
+        nextReminder = new Date(Date.now() + persistentInterval * 60 * 1000);
       }
+
+      await db.execute({
+        sql: "UPDATE tasks SET scheduled_time = ?, executed = 0, updated_at = ? WHERE id = ?",
+        args: [nextReminder.toISOString(), new Date().toISOString(), taskId],
+      });
     }
 
     return NextResponse.json({

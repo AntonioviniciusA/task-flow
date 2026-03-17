@@ -30,7 +30,6 @@ import type {
   TaskPriority,
   TaskFrequency,
   UpdateTaskInput,
-  NetworkContext,
 } from "@/lib/types";
 
 interface EditTaskDialogProps {
@@ -40,19 +39,12 @@ interface EditTaskDialogProps {
   onUpdate: () => void;
 }
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
-
 export function EditTaskDialog({
   task,
   open,
   onOpenChange,
   onUpdate,
 }: EditTaskDialogProps) {
-  const { data: networkData } = useSWR<{
-    success: boolean;
-    data: NetworkContext[];
-  }>("/api/settings/networks", fetcher);
-
   const [isLoading, setIsLoading] = useState(false);
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description || "");
@@ -73,9 +65,7 @@ export function EditTaskDialog({
   const [notificationEnabled, setNotificationEnabled] = useState(
     task.notification_enabled,
   );
-  const [networkContextId, setNetworkContextId] = useState<string>(
-    task.network_context_id || "none",
-  );
+  const [allDay, setAllDay] = useState(task.all_day || false);
 
   // Extrair hora e minuto para os seletores
   const [currentHour, currentMinute] = (notificationTime || "09:00").split(":");
@@ -95,7 +85,7 @@ export function EditTaskDialog({
       setNotificationTime(task.notification_time || "09:00");
       setPriority(task.priority);
       setNotificationEnabled(task.notification_enabled);
-      setNetworkContextId(task.network_context_id || "none");
+      setAllDay(task.all_day || false);
     }
   }, [task, open]);
 
@@ -104,9 +94,34 @@ export function EditTaskDialog({
     setIsLoading(true);
 
     try {
+      let finalDueDate = dueDate;
+      if (frequency === "weekly") {
+        const today = new Date();
+        const targetDay = parseInt(frequencyDayOfWeek);
+        let daysUntil = (targetDay - today.getDay() + 7) % 7;
+
+        // Se for hoje, mas a hora já passou, agenda para a próxima semana
+        if (daysUntil === 0 && notificationTime) {
+          const [hours, minutes] = (allDay ? "09:00" : notificationTime)
+            .split(":")
+            .map(Number);
+          if (
+            today.getHours() > hours ||
+            (today.getHours() === hours && today.getMinutes() >= minutes)
+          ) {
+            daysUntil = 7;
+          }
+        }
+
+        const nextDate = new Date(today);
+        nextDate.setDate(today.getDate() + daysUntil);
+        finalDueDate = nextDate.toISOString().split("T")[0];
+      }
+
       let scheduledTimeIso: string | undefined;
-      if (notificationEnabled && dueDate && notificationTime) {
-        const localDate = new Date(`${dueDate}T${notificationTime}`);
+      if (notificationEnabled && finalDueDate && (notificationTime || allDay)) {
+        const timeToUse = allDay ? "09:00" : notificationTime;
+        const localDate = new Date(`${finalDueDate}T${timeToUse}`);
         if (!isNaN(localDate.getTime())) {
           scheduledTimeIso = localDate.toISOString();
         }
@@ -115,18 +130,17 @@ export function EditTaskDialog({
       const payload: UpdateTaskInput = {
         title,
         description: description || undefined,
-        due_date: dueDate || undefined,
+        due_date: finalDueDate || undefined,
         frequency,
         frequency_day_of_week:
           frequency === "weekly" ? parseInt(frequencyDayOfWeek) : undefined,
         frequency_day_of_month:
           frequency === "monthly" ? parseInt(frequencyDayOfMonth) : undefined,
-        notification_time: notificationTime || undefined,
+        notification_time: allDay ? undefined : notificationTime || undefined,
         priority,
         notification_enabled: notificationEnabled,
+        all_day: allDay,
         scheduled_time_iso: scheduledTimeIso,
-        network_context_id:
-          networkContextId === "none" ? null : networkContextId,
       };
 
       const response = await fetch(`/api/tasks/${task.id}`, {
@@ -190,53 +204,84 @@ export function EditTaskDialog({
               </Field>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field>
-                  <FieldLabel htmlFor="dueDate">Data</FieldLabel>
-                  <Input
-                    id="dueDate"
-                    type="date"
-                    value={dueDate}
-                    onChange={(e) => setDueDate(e.target.value)}
-                    disabled={isLoading}
-                  />
-                </Field>
+                {frequency !== "weekly" && (
+                  <Field>
+                    <FieldLabel htmlFor="dueDate">Data</FieldLabel>
+                    <Input
+                      id="dueDate"
+                      type="date"
+                      value={dueDate}
+                      onChange={(e) => setDueDate(e.target.value)}
+                      disabled={isLoading}
+                    />
+                  </Field>
+                )}
 
                 <Field>
-                  <FieldLabel htmlFor="notificationTime">
+                  <FieldLabel htmlFor="edit-notificationTime">
                     Hora da Notificação
                   </FieldLabel>
-                  <div className="flex gap-2">
-                    <select
-                      value={parseInt(currentHour)}
-                      onChange={(e) =>
-                        updateTime(e.target.value, currentMinute)
-                      }
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {Array.from({ length: 24 }, (_, h) => (
-                        <option key={h} value={h}>
-                          {String(h).padStart(2, "0")}h
-                        </option>
-                      ))}
-                    </select>
+                  {allDay ? (
+                    <div className="flex h-10 w-full items-center rounded-md border border-input bg-muted/50 px-3 py-2 text-sm text-muted-foreground italic">
+                      3 notificações (09h, 14h, 19h)
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <select
+                        value={parseInt(currentHour)}
+                        onChange={(e) =>
+                          updateTime(e.target.value, currentMinute)
+                        }
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {Array.from({ length: 24 }, (_, h) => (
+                          <option key={h} value={h}>
+                            {String(h).padStart(2, "0")}h
+                          </option>
+                        ))}
+                      </select>
 
-                    <select
-                      value={parseInt(currentMinute)}
-                      onChange={(e) => updateTime(currentHour, e.target.value)}
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {Array.from({ length: 12 }, (_, i) => i * 5).map((m) => (
-                        <option key={m} value={m}>
-                          {String(m).padStart(2, "0")} min
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                      <select
+                        value={parseInt(currentMinute)}
+                        onChange={(e) =>
+                          updateTime(currentHour, e.target.value)
+                        }
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {Array.from({ length: 12 }, (_, i) => i * 5).map(
+                          (m) => (
+                            <option key={m} value={m}>
+                              {String(m).padStart(2, "0")} min
+                            </option>
+                          ),
+                        )}
+                      </select>
+                    </div>
+                  )}
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Intervalos de 5 minutos
+                    {allDay
+                      ? "Notificações automáticas durante o dia"
+                      : "Intervalos de 5 minutos"}
                   </p>
                 </Field>
               </div>
+
+              <Field className="flex items-center justify-between p-3 rounded-lg border bg-muted/20">
+                <div>
+                  <FieldLabel htmlFor="edit-allDay" className="mb-0">
+                    Dia Todo
+                  </FieldLabel>
+                  <p className="text-xs text-muted-foreground">
+                    Notificar 3 vezes ao longo do dia
+                  </p>
+                </div>
+                <Switch
+                  id="edit-allDay"
+                  checked={allDay}
+                  onCheckedChange={setAllDay}
+                  disabled={isLoading}
+                />
+              </Field>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field>
@@ -327,35 +372,6 @@ export function EditTaskDialog({
                     <SelectItem value="high">Alta</SelectItem>
                   </SelectContent>
                 </Select>
-              </Field>
-
-              <Field>
-                <FieldLabel htmlFor="edit-networkContext">
-                  Localização (Wi-Fi)
-                </FieldLabel>
-                <Select
-                  value={networkContextId}
-                  onValueChange={setNetworkContextId}
-                  disabled={isLoading}
-                >
-                  <SelectTrigger id="edit-networkContext">
-                    <div className="flex items-center gap-2">
-                      <Wifi className="w-4 h-4 text-muted-foreground" />
-                      <SelectValue placeholder="Selecione um local" />
-                    </div>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Qualquer lugar</SelectItem>
-                    {networkData?.data?.map((net) => (
-                      <SelectItem key={net.id} value={net.id}>
-                        {net.name} ({net.context_slug})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="mt-1 text-[10px] text-muted-foreground leading-tight">
-                  A tarefa será priorizada quando você estiver nesta rede.
-                </p>
               </Field>
 
               <Field className="flex items-center justify-between">

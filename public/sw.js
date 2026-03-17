@@ -82,8 +82,8 @@ self.addEventListener("push", (event) => {
 
   const options = {
     body: data.body,
-    icon: data.icon || "/icon-light-32x32.png",
-    badge: data.badge || "/icon-light-32x32.png",
+    icon: data.icon || "/icone-notime.png",
+    badge: data.badge || "/icone-notime.png",
     image: data.image,
     vibrate: [200, 100, 200],
     tag: data.tag || data.taskId || "task-notification",
@@ -91,7 +91,7 @@ self.addEventListener("push", (event) => {
     requireInteraction: true,
     data: {
       taskId: data.taskId,
-      url: data.url || "/dashboard",
+      url: data.url || "/dashboard/notification-action?taskId=" + data.taskId,
     },
     actions: data.actions || [
       {
@@ -104,6 +104,11 @@ self.addEventListener("push", (event) => {
       },
     ],
   };
+
+  // Tentar aplicar configurações de som e vibração do usuário
+  // Como estamos no SW, não temos acesso direto ao localStorage,
+  // mas as opções enviadas no push podem vir já filtradas se o servidor souber.
+  // Por enquanto, usamos os defaults.
 
   event.waitUntil(
     self.registration
@@ -131,7 +136,7 @@ self.addEventListener("notificationclick", (event) => {
 
   notification.close();
 
-  if ((action === "complete" || action === "snooze") && taskId) {
+  if (action === "complete" || action === "snooze") {
     // Chamar a API de ação da tarefa
     event.waitUntil(
       fetch(`/api/tasks/${taskId}/action`, {
@@ -149,33 +154,36 @@ self.addEventListener("notificationclick", (event) => {
           const body =
             action === "complete"
               ? "A tarefa foi marcada como concluída."
-              : "Lembrete adiado por 15 minutos.";
+              : "Lembrete adiado.";
 
           return self.registration.showNotification(title, {
             body,
-            icon: "/icon-light-32x32.png",
+            icon: "/icone-notime.png",
             tag: "action-confirmation",
           });
         })
         .catch((error) => {
           console.error("[Service Worker] Erro ao processar ação:", error);
-          // Se falhar (ex: não autenticado), abre o app
+          // Se falhar (ex: não autenticado), abre o app na tela de ação
           return clients.openWindow(
-            `/dashboard?taskId=${taskId}&action=${action}`,
+            `/dashboard/notification-action?taskId=${taskId}&error=auth`,
           );
         }),
     );
   } else {
-    // Clique na notificação sem ação específica ou ação de abrir - abrir o app
+    // Clique na notificação sem ação específica - abrir a tela de ação da tarefa
     event.waitUntil(
       clients
         .matchAll({ type: "window", includeUncontrolled: true })
         .then((windowClients) => {
-          const urlToOpen = notification.data?.url || "/dashboard";
+          const urlToOpen = taskId
+            ? `/dashboard/notification-action?taskId=${taskId}`
+            : "/dashboard";
 
-          // Se já há uma janela aberta no dashboard, focar nela
+          // Se já há uma janela aberta no dashboard, focar nela e navegar
           for (const client of windowClients) {
             if (client.url.includes("/dashboard") && "focus" in client) {
+              client.navigate(urlToOpen);
               return client.focus();
             }
           }

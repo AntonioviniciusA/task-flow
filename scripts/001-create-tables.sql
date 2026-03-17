@@ -4,6 +4,9 @@ CREATE TABLE IF NOT EXISTS users (
   email TEXT UNIQUE NOT NULL,
   name TEXT NOT NULL,
   password_hash TEXT NOT NULL,
+  persistent_interval INTEGER DEFAULT 60,
+  notification_sound INTEGER DEFAULT 1,
+  notification_vibration INTEGER DEFAULT 1,
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now'))
 );
@@ -38,6 +41,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   priority TEXT CHECK(priority IN ('low', 'medium', 'high')) DEFAULT 'medium',
   status TEXT CHECK(status IN ('pending', 'in_progress', 'completed', 'cancelled')) DEFAULT 'pending',
   notification_enabled INTEGER DEFAULT 1,
+  all_day INTEGER DEFAULT 0,
   executed INTEGER DEFAULT 0,
   scheduled_time TEXT,
   created_at TEXT DEFAULT (datetime('now')),

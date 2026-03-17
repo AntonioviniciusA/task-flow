@@ -1,19 +1,19 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { signOut } from 'next-auth/react'
-import { Button } from '@/components/ui/button'
+import { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { signOut } from "next-auth/react";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { cn } from '@/lib/utils'
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { cn } from "@/lib/utils";
 import {
   CheckSquare,
   LayoutDashboard,
@@ -22,32 +22,32 @@ import {
   LogOut,
   Menu,
   X,
-} from 'lucide-react'
+} from "lucide-react";
 
 interface DashboardNavProps {
   user: {
-    id: string
-    name?: string | null
-    email?: string | null
-  }
+    id: string;
+    name?: string | null;
+    email?: string | null;
+  };
 }
 
 export function DashboardNav({ user }: DashboardNavProps) {
-  const pathname = usePathname()
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const pathname = usePathname();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navItems = [
-    { href: '/dashboard', label: 'Tarefas', icon: LayoutDashboard },
-    { href: '/dashboard/notifications', label: 'Notificações', icon: Bell },
-    { href: '/dashboard/settings', label: 'Configurações', icon: Settings },
-  ]
+    { href: "/dashboard", label: "Tarefas", icon: LayoutDashboard },
+    { href: "/dashboard/settings", label: "Configurações", icon: Settings },
+  ];
 
-  const initials = user.name
-    ?.split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2) || 'U'
+  const initials =
+    user.name
+      ?.split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2) || "U";
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -56,7 +56,7 @@ export function DashboardNav({ user }: DashboardNavProps) {
           {/* Logo */}
           <Link href="/dashboard" className="flex items-center gap-2">
             <div className="flex items-center justify-center w-10 h-10 rounded-xl overflow-hidden shadow-sm">
-              <img src="/icon.png" alt="No Time Logo" className="w-full h-full object-cover" />
+              <img src="/icone-notime.png" alt="No Time Logo" className="w-full h-full object-cover" />
             </div>
             <div className="flex flex-col">
               <span className="font-bold text-foreground leading-tight tracking-tight">
@@ -71,23 +71,23 @@ export function DashboardNav({ user }: DashboardNavProps) {
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-1">
             {navItems.map((item) => {
-              const Icon = item.icon
-              const isActive = pathname === item.href
+              const Icon = item.icon;
+              const isActive = pathname === item.href;
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    'flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors',
+                    "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors",
                     isActive
-                      ? 'bg-primary/10 text-primary'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted",
                   )}
                 >
                   <Icon className="w-4 h-4" />
                   {item.label}
                 </Link>
-              )
+              );
             })}
           </nav>
 
@@ -95,7 +95,10 @@ export function DashboardNav({ user }: DashboardNavProps) {
           <div className="flex items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                <Button
+                  variant="ghost"
+                  className="relative h-8 w-8 rounded-full"
+                >
                   <Avatar className="h-8 w-8">
                     <AvatarFallback className="bg-primary text-primary-foreground text-xs">
                       {initials}
@@ -127,7 +130,7 @@ export function DashboardNav({ user }: DashboardNavProps) {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   className="text-destructive cursor-pointer"
-                  onClick={() => signOut({ callbackUrl: '/login' })}
+                  onClick={() => signOut({ callbackUrl: "/login" })}
                 >
                   <LogOut className="w-4 h-4 mr-2" />
                   Sair
@@ -156,29 +159,29 @@ export function DashboardNav({ user }: DashboardNavProps) {
           <nav className="md:hidden py-4 border-t border-border">
             <div className="flex flex-col gap-1">
               {navItems.map((item) => {
-                const Icon = item.icon
-                const isActive = pathname === item.href
+                const Icon = item.icon;
+                const isActive = pathname === item.href;
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
                     onClick={() => setMobileMenuOpen(false)}
                     className={cn(
-                      'flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors',
+                      "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors",
                       isActive
-                        ? 'bg-primary/10 text-primary'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted",
                     )}
                   >
                     <Icon className="w-4 h-4" />
                     {item.label}
                   </Link>
-                )
+                );
               })}
             </div>
           </nav>
         )}
       </div>
     </header>
-  )
+  );
 }

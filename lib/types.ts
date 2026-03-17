@@ -35,21 +35,11 @@ export interface Task {
   notification_enabled: boolean;
   executed: boolean;
   scheduled_time: string | null;
+  all_day: boolean;
   created_at: string;
   updated_at: string;
   completed_at: string | null;
-  network_context_id?: string | null;
   categories?: Category[];
-}
-
-export interface NetworkContext {
-  id: string;
-  user_id: string;
-  name: string;
-  ip_range: string;
-  context_slug: string;
-  created_at: string;
-  updated_at: string;
 }
 
 export interface Device {
@@ -121,8 +111,8 @@ export interface CreateTaskInput {
   notification_time?: string;
   priority?: TaskPriority;
   notification_enabled?: boolean;
+  all_day?: boolean;
   scheduled_time_iso?: string;
-  network_context_id?: string | null;
   category_ids?: string[];
 }
 

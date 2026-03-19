@@ -40,6 +40,7 @@ export function calculateNextRun(
 
   // Se for "dia todo", reseta para o primeiro horário (09:00) do novo dia
   if (allDay) {
+    // Nota: O chamador (route.ts) deve ajustar para o time1 específico da tarefa
     next.setHours(9, 0, 0, 0);
   }
 

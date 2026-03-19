@@ -11,7 +11,7 @@ export async function GET() {
     }
 
     const result = await db.execute({
-      sql: "SELECT persistent_interval, notification_sound, notification_vibration FROM users WHERE id = ?",
+      sql: "SELECT persistent_interval, notification_sound, notification_vibration, sound_low, sound_medium, sound_high FROM users WHERE id = ?",
       args: [session.user.id],
     });
 
@@ -26,6 +26,9 @@ export async function GET() {
         persistent_interval: Number(user.persistent_interval),
         notification_sound: Boolean(user.notification_sound),
         notification_vibration: Boolean(user.notification_vibration),
+        sound_low: user.sound_low || "default",
+        sound_medium: user.sound_medium || "default",
+        sound_high: user.sound_high || "default",
       },
     });
   } catch (error) {
@@ -46,8 +49,14 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { persistent_interval, notification_sound, notification_vibration } =
-      body;
+    const {
+      persistent_interval,
+      notification_sound,
+      notification_vibration,
+      sound_low,
+      sound_medium,
+      sound_high,
+    } = body;
 
     const updates: string[] = ["updated_at = ?"];
     const args: any[] = [new Date().toISOString()];
@@ -65,6 +74,21 @@ export async function PATCH(request: NextRequest) {
     if (notification_vibration !== undefined) {
       updates.push("notification_vibration = ?");
       args.push(notification_vibration ? 1 : 0);
+    }
+
+    if (sound_low !== undefined) {
+      updates.push("sound_low = ?");
+      args.push(sound_low);
+    }
+
+    if (sound_medium !== undefined) {
+      updates.push("sound_medium = ?");
+      args.push(sound_medium);
+    }
+
+    if (sound_high !== undefined) {
+      updates.push("sound_high = ?");
+      args.push(sound_high);
     }
 
     args.push(session.user.id);

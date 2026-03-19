@@ -69,7 +69,7 @@ export async function GET(request: Request) {
           args: [userId],
         }),
         db.execute({
-          sql: "SELECT persistent_interval, notification_sound, notification_vibration FROM users WHERE id = ?",
+          sql: "SELECT persistent_interval, notification_sound, notification_vibration, sound_low, sound_medium, sound_high FROM users WHERE id = ?",
           args: [userId],
         }),
       ]);
@@ -81,6 +81,14 @@ export async function GET(request: Request) {
 
       const soundEnabled = userPrefs?.notification_sound !== 0;
       const vibrationEnabled = userPrefs?.notification_vibration !== 0;
+
+      // Mapear sons por prioridade
+      const getPrioritySound = (priority: string) => {
+        if (!soundEnabled) return "silent";
+        if (priority === "high") return userPrefs?.sound_high || "default";
+        if (priority === "low") return userPrefs?.sound_low || "default";
+        return userPrefs?.sound_medium || "default";
+      };
 
       const subscriptions = deviceResult.rows.map((row) => ({
         endpoint: row.endpoint as string,
@@ -102,10 +110,17 @@ export async function GET(request: Request) {
             body: description || "Você tem uma tarefa pendente",
             taskId: taskId,
             url: `/dashboard/notification-action?taskId=${taskId}`,
-            urgency: task.priority === "high" ? "high" : undefined,
+            urgency: task.priority === "high" ? "high" : "normal",
+            requireInteraction: task.priority === "high", // Forçar interação se for alta prioridade
             tag: taskId,
             silent: !soundEnabled,
-            vibrate: vibrationEnabled ? [200, 100, 200] : [],
+            sound: getPrioritySound(task.priority as string),
+            vibrate: vibrationEnabled
+              ? [
+                  500, 110, 500, 110, 450, 110, 200, 110, 170, 40, 450, 110,
+                  200, 110, 170, 40,
+                ]
+              : [], // Vibração mais forte se for alta prioridade
             actions: [
               { action: "complete", title: "✅ Concluir" },
               { action: "snooze", title: "⏰ Adiar" },
@@ -117,25 +132,42 @@ export async function GET(request: Request) {
           }
         }
 
-        // 6. Tornar a notificação persistente: adiar automaticamente
+        // 5. Tornar a notificação persistente: adiar automaticamente
+        // Se for "dia todo", tentamos seguir a escala configurada (time1, time2, time3)
+        // Se não, usamos o intervalo configurado pelo usuário
         let nextReminder: Date;
         const allDay = !!task.all_day;
 
         if (allDay) {
           const today = new Date();
-          const hours = [9, 14, 19];
-          let nextHour = hours.find((h) => h > today.getHours());
+          const t1 = (task.all_day_time1 as string) || "09:00";
+          const t2 = (task.all_day_time2 as string) || "14:00";
+          const t3 = (task.all_day_time3 as string) || "19:00";
 
-          if (nextHour) {
+          const parseTime = (t: string) => {
+            const [h, m] = t.split(":").map(Number);
+            return h * 60 + m;
+          };
+
+          const currentMinutes = today.getHours() * 60 + today.getMinutes();
+          const times = [t1, t2, t3]
+            .map((t) => ({ original: t, minutes: parseTime(t) }))
+            .sort((a, b) => a.minutes - b.minutes);
+
+          const nextTime = times.find((t) => t.minutes > currentMinutes);
+
+          if (nextTime) {
+            const [nextH, nextM] = nextTime.original.split(":").map(Number);
             nextReminder = new Date(
               today.getFullYear(),
               today.getMonth(),
               today.getDate(),
-              nextHour,
-              0,
+              nextH,
+              nextM,
               0,
             );
           } else {
+            // Já passaram todos os horários do dia, usa o intervalo persistente configurado
             nextReminder = new Date(
               Date.now() + persistentInterval * 60 * 1000,
             );

@@ -36,6 +36,9 @@ export interface Task {
   executed: boolean;
   scheduled_time: string | null;
   all_day: boolean;
+  all_day_time1: string | null;
+  all_day_time2: string | null;
+  all_day_time3: string | null;
   icon?: string | null;
   created_at: string;
   updated_at: string;
@@ -113,13 +116,32 @@ export interface CreateTaskInput {
   priority?: TaskPriority;
   notification_enabled?: boolean;
   all_day?: boolean;
+  all_day_time1?: string | null;
+  all_day_time2?: string | null;
+  all_day_time3?: string | null;
   icon?: string;
   scheduled_time_iso?: string;
   category_ids?: string[];
 }
 
-export interface UpdateTaskInput extends Partial<CreateTaskInput> {
-  status?: TaskStatus;
+export interface UpdateTaskInput {
+  title?: string;
+  description?: string;
+  due_date?: string | null;
+  frequency?: TaskFrequency;
+  frequency_day_of_week?: number;
+  frequency_day_of_month?: number;
+  notification_time?: string | null;
+  priority?: TaskPriority;
+  status?: "pending" | "in_progress" | "completed" | "cancelled";
+  notification_enabled?: boolean;
+  all_day?: boolean;
+  all_day_time1?: string | null;
+  all_day_time2?: string | null;
+  all_day_time3?: string | null;
+  icon?: string | null;
+  scheduled_time_iso?: string;
+  network_context_id?: string | null;
 }
 
 export interface CreateDeviceInput {

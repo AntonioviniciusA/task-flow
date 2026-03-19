@@ -47,15 +47,27 @@ export function AiTaskInput() {
     if (!aiResponse) return;
     setIsLoading(true);
 
+    // Formatar descrição se houver local ou duração
+    let description = "";
+    if (aiResponse.location_trigger?.place) {
+      description += `Local: ${aiResponse.location_trigger.place}`;
+    }
+    if (aiResponse.duration_minutes) {
+      if (description) description += "\n";
+      description += `Duração: ${aiResponse.duration_minutes} min`;
+    }
+
     try {
       const response = await fetch("/api/tasks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: aiResponse.title,
+          description: description || undefined,
           due_date: aiResponse.date,
           notification_time: aiResponse.time,
-          priority: aiResponse.priority === "normal" ? "medium" : aiResponse.priority,
+          priority:
+            aiResponse.priority === "normal" ? "medium" : aiResponse.priority,
           frequency: aiResponse.recurrence || "once",
           notification_enabled: !!aiResponse.time,
         }),
@@ -100,30 +112,30 @@ export function AiTaskInput() {
 
       {aiResponse && (
         <Card className="border-success/20 bg-success/5 animate-in slide-in-from-top-2 duration-300">
-          <CardContent className="p-4 flex items-center justify-between gap-4">
-            <div className="flex-1 space-y-2">
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="bg-success/10 text-success border-success/20">
+          <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex-1 space-y-2 min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="outline" className="bg-success/10 text-success border-success/20 shrink-0">
                   Confirmar Tarefa
                 </Badge>
-                <h4 className="font-semibold text-foreground">{aiResponse.title}</h4>
+                <h4 className="font-semibold text-foreground truncate w-full sm:w-auto">{aiResponse.title}</h4>
               </div>
               
-              <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+              <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
                 {aiResponse.date && (
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 shrink-0">
                     <Calendar className="w-3 h-3" />
                     {aiResponse.date}
                   </div>
                 )}
                 {aiResponse.time && (
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 shrink-0">
                     <Clock className="w-3 h-3" />
                     {aiResponse.time}
                   </div>
                 )}
                 {aiResponse.priority !== "normal" && (
-                  <div className="flex items-center gap-1 text-destructive font-medium">
+                  <div className="flex items-center gap-1 text-destructive font-medium shrink-0">
                     <AlertCircle className="w-3 h-3" />
                     Prioridade Alta
                   </div>
@@ -131,11 +143,20 @@ export function AiTaskInput() {
               </div>
             </div>
             
-            <div className="flex gap-2">
-              <Button variant="ghost" size="sm" onClick={() => setAiResponse(null)}>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setAiResponse(null)}
+                className="flex-1 sm:flex-none"
+              >
                 Cancelar
               </Button>
-              <Button size="sm" className="bg-success hover:bg-success/90" onClick={handleConfirmTask}>
+              <Button 
+                size="sm" 
+                className="bg-success hover:bg-success/90 flex-1 sm:flex-none" 
+                onClick={handleConfirmTask}
+              >
                 <Plus className="w-4 h-4 mr-1" />
                 Criar
               </Button>

@@ -35,6 +35,8 @@ import {
   BellOff,
   Calendar,
   Flag,
+  Share2,
+  Copy,
   Briefcase,
   ShoppingCart,
   Home,
@@ -94,6 +96,7 @@ export function TaskCard({ task, onUpdate }: TaskCardProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
 
   const isCompleted = task.status === "completed";
   const priority = priorityConfig[task.priority];
@@ -160,6 +163,38 @@ export function TaskCard({ task, onUpdate }: TaskCardProps) {
     } finally {
       setIsDeleting(false);
       setShowDeleteDialog(false);
+    }
+  }
+
+  async function handleShare(mode: "copy" | "sync" = "sync") {
+    // Se for chamado via evento, mode será o objeto de evento
+    const shareMode = typeof mode === "string" ? mode : "sync";
+    setIsSharing(true);
+    try {
+      const response = await fetch(
+        `/api/tasks/${task.id}/share?mode=${shareMode}`,
+        {
+          method: "POST",
+        },
+      );
+
+      const data = await response.json();
+
+      if (response.ok) {
+        const shareUrl = `${window.location.origin}/share/${data.data.token}`;
+        await navigator.clipboard.writeText(shareUrl);
+        toast.success(
+          mode === "copy"
+            ? "Link de cópia copiado! (Válido por 24h)"
+            : "Link de sincronização copiado! (Válido por 24h)",
+        );
+      } else {
+        toast.error(data.error || "Erro ao gerar link");
+      }
+    } catch {
+      toast.error("Erro ao gerar link");
+    } finally {
+      setIsSharing(false);
     }
   }
 
@@ -247,6 +282,15 @@ export function TaskCard({ task, onUpdate }: TaskCardProps) {
                 <DropdownMenuItem onClick={() => setShowEditDialog(true)}>
                   <Edit className="h-4 w-4 mr-2" />
                   Editar
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => handleShare("copy")} disabled={isSharing}>
+                  <Copy className="h-4 w-4 mr-2" />
+                  Compartilhar Cópia
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleShare("sync")} disabled={isSharing}>
+                  <Share2 className="h-4 w-4 mr-2" />
+                  Sincronizar Tarefa
                 </DropdownMenuItem>
                 {isCompleted ? (
                   <DropdownMenuItem onClick={handleReopen}>

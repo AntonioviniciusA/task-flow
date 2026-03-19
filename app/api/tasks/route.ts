@@ -24,21 +24,25 @@ export async function GET(
     const limit = parseInt(searchParams.get("limit") || "50");
     const offset = parseInt(searchParams.get("offset") || "0");
 
-    let sql = "SELECT * FROM tasks WHERE user_id = ?";
-    const args: (string | number)[] = [session.user.id];
+    let sql = `
+      SELECT t.* FROM tasks t
+      WHERE t.user_id = ? 
+      OR t.id IN (SELECT task_id FROM task_shares WHERE user_id = ?)
+    `;
+    const args: (string | number)[] = [session.user.id, session.user.id];
 
     if (status) {
-      sql += " AND status = ?";
+      sql += " AND t.status = ?";
       args.push(status);
     }
 
     if (priority) {
-      sql += " AND priority = ?";
+      sql += " AND t.priority = ?";
       args.push(priority);
     }
 
     sql +=
-      " ORDER BY COALESCE(due_date, '9999-99-99') ASC, created_at DESC LIMIT ? OFFSET ?";
+      " ORDER BY COALESCE(t.due_date, '9999-99-99') ASC, t.created_at DESC LIMIT ? OFFSET ?";
     args.push(limit, offset);
 
     const result = await db.execute({ sql, args });
@@ -101,9 +105,11 @@ export async function POST(
       sql: `INSERT INTO tasks (
         id, user_id, title, description, due_date,
         frequency, frequency_day_of_week, frequency_day_of_month, notification_time,
-        priority, status, notification_enabled, all_day, icon, executed, scheduled_time,
+        priority, status, notification_enabled, all_day, 
+        all_day_time1, all_day_time2, all_day_time3,
+        icon, executed, scheduled_time,
         created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, ?)`,
       args: [
         id,
         session.user.id,
@@ -118,6 +124,9 @@ export async function POST(
         "pending",
         body.notification_enabled !== false ? 1 : 0,
         body.all_day ? 1 : 0,
+        body.all_day_time1 || '09:00',
+        body.all_day_time2 || '14:00',
+        body.all_day_time3 || '19:00',
         body.icon || null,
         now,
         now,
@@ -178,6 +187,9 @@ export async function POST(
       status: "pending",
       notification_enabled: body.notification_enabled !== false,
       all_day: !!body.all_day,
+      all_day_time1: body.all_day_time1 || '09:00',
+      all_day_time2: body.all_day_time2 || '14:00',
+      all_day_time3: body.all_day_time3 || '19:00',
       icon: body.icon || null,
       executed: false,
       scheduled_time: finalScheduledTime,

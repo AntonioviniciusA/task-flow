@@ -29,6 +29,8 @@ export interface PushPayload {
   taskId?: string;
   url?: string;
   urgency?: 'low' | 'medium' | 'high';
+  requireInteraction?: boolean;
+  sound?: string;
   icon?: string;
   badge?: string;
   image?: string;

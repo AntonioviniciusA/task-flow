@@ -170,6 +170,21 @@ function interpretTaskMessage(msg: string) {
     }
   }
 
+  // 6.5 Localização
+  let location_trigger: { type: string | null; place: string | null } = {
+    type: null,
+    place: null,
+  };
+  if (text.includes(" no ") || text.includes(" na ") || text.includes(" em ")) {
+    const place =
+      extractPlace(text, " no ") ||
+      extractPlace(text, " na ") ||
+      extractPlace(text, " em ");
+    if (place) {
+      location_trigger = { type: "entry", place };
+    }
+  }
+
   // 7. Limpeza do Título
   let title = msg
     .replace(

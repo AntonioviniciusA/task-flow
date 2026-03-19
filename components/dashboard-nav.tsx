@@ -63,7 +63,7 @@ export function DashboardNav({ user }: DashboardNavProps) {
                 No Time
               </span>
               <span className="text-[10px] text-[#007AFF] font-bold uppercase tracking-wider">
-                Beta 1.21
+                Beta 1.3
               </span>
             </div>
           </Link>

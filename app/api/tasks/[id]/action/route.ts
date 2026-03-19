@@ -64,9 +64,17 @@ export async function POST(
           nextDueDate = newDueDate.toISOString().split("T")[0];
         }
 
+        // If all_day, ensure the scheduled_time uses all_day_time1
+        let finalScheduledTime = nextRun.toISOString();
+        if (task.all_day) {
+          const t1 = task.all_day_time1 || "09:00";
+          const nextRunDate = nextRun.toISOString().split("T")[0];
+          finalScheduledTime = new Date(`${nextRunDate}T${t1}`).toISOString();
+        }
+
         await db.execute({
           sql: `UPDATE tasks SET scheduled_time = ?, due_date = ?, executed = 0, updated_at = ? WHERE id = ?`,
-          args: [nextRun.toISOString(), nextDueDate, now, id],
+          args: [finalScheduledTime, nextDueDate, now, id],
         });
       } else {
         // Mark task as completed

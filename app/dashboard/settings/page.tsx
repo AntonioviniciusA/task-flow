@@ -33,11 +33,21 @@ import {
   Moon,
   Sun,
   Monitor,
+  Music,
 } from "lucide-react";
 import type { Device } from "@/lib/types";
 import { Input } from "@/components/ui/input";
+import { PwaInstallInstructions } from "@/components/pwa-install-instructions";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
+
+const SOUNDS = [
+  { label: "Padrão", value: "default" },
+  { label: "Suave", value: "soft" },
+  { label: "Energético", value: "energetic" },
+  { label: "Alerta", value: "alert" },
+  { label: "Digital", value: "digital" },
+];
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
@@ -50,6 +60,9 @@ export default function SettingsPage() {
   const [persistentInterval, setPersistentInterval] = useState("60");
   const [notificationSound, setNotificationSound] = useState(true);
   const [notificationVibration, setNotificationVibration] = useState(true);
+  const [soundLow, setSoundLow] = useState("default");
+  const [soundMedium, setSoundMedium] = useState("default");
+  const [soundHigh, setSoundHigh] = useState("default");
 
   const [isInstallable, setIsInstallable] = useState(false);
   const [deferredPrompt, setDeferredPrompt] =
@@ -66,6 +79,9 @@ export default function SettingsPage() {
             setPersistentInterval(String(result.data.persistent_interval));
             setNotificationSound(result.data.notification_sound);
             setNotificationVibration(result.data.notification_vibration);
+            setSoundLow(result.data.sound_low || "default");
+            setSoundMedium(result.data.sound_medium || "default");
+            setSoundHigh(result.data.sound_high || "default");
           }
         }
       } catch (error) {
@@ -98,6 +114,9 @@ export default function SettingsPage() {
     if (key === "notification_sound") setNotificationSound(Boolean(value));
     if (key === "notification_vibration")
       setNotificationVibration(Boolean(value));
+    if (key === "sound_low") setSoundLow(String(value));
+    if (key === "sound_medium") setSoundMedium(String(value));
+    if (key === "sound_high") setSoundHigh(String(value));
 
     try {
       const response = await fetch("/api/settings/notifications", {
@@ -221,27 +240,8 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      {/* PWA Install */}
-      {isInstallable && (
-        <Card className="border-primary/20 bg-primary/5">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10">
-                  <Download className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-medium">Instalar Aplicativo</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Adicione à tela inicial para acesso rápido
-                  </p>
-                </div>
-              </div>
-              <Button onClick={handleInstallPWA}>Instalar</Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* PWA Install Instructions */}
+      <PwaInstallInstructions />
 
       {/* Notifications */}
       <Card>
@@ -308,6 +308,74 @@ export default function SettingsPage() {
                   }
                 />
               </Field>
+
+              {notificationSound && (
+                <div className="pl-4 space-y-4 border-l-2 border-primary/20 animate-in fade-in slide-in-from-left-2">
+                  <Field>
+                    <FieldLabel className="text-xs">
+                      Prioridade Baixa
+                    </FieldLabel>
+                    <Select
+                      value={soundLow}
+                      onValueChange={(v) => updateSetting("sound_low", v)}
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <Music className="w-3 h-3 mr-2" />
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SOUNDS.map((s) => (
+                          <SelectItem key={s.value} value={s.value}>
+                            {s.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  <Field>
+                    <FieldLabel className="text-xs">
+                      Prioridade Média
+                    </FieldLabel>
+                    <Select
+                      value={soundMedium}
+                      onValueChange={(v) => updateSetting("sound_medium", v)}
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <Music className="w-3 h-3 mr-2" />
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SOUNDS.map((s) => (
+                          <SelectItem key={s.value} value={s.value}>
+                            {s.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  <Field>
+                    <FieldLabel className="text-xs font-semibold text-destructive">
+                      Prioridade Alta
+                    </FieldLabel>
+                    <Select
+                      value={soundHigh}
+                      onValueChange={(v) => updateSetting("sound_high", v)}
+                    >
+                      <SelectTrigger className="h-8 text-xs border-destructive/20">
+                        <Music className="w-3 h-3 mr-2" />
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SOUNDS.map((s) => (
+                          <SelectItem key={s.value} value={s.value}>
+                            {s.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                </div>
+              )}
 
               <Field className="flex items-center justify-between">
                 <div>
@@ -484,7 +552,7 @@ export default function SettingsPage() {
         <CardContent className="space-y-2 text-sm text-muted-foreground">
           <p>No Time PWA</p>
           <Separator />
-          <p>Versão Beta 1.21</p>
+          <p>Versão Beta 1.3</p>
           <p>Com suporte a notificações push e modo offline</p>
         </CardContent>
       </Card>
@@ -518,4 +586,14 @@ function arrayBufferToBase64(buffer: ArrayBuffer | null): string {
     binary += String.fromCharCode(bytes[i]);
   }
   return window.btoa(binary);
+}
+
+function getDeviceName(): string {
+  const ua = navigator.userAgent;
+  if (/android/i.test(ua)) return "Android Device";
+  if (/iPad|iPhone|iPod/.test(ua)) return "iOS Device";
+  if (/Windows/i.test(ua)) return "Windows PC";
+  if (/Macintosh/i.test(ua)) return "Mac";
+  if (/Linux/i.test(ua)) return "Linux Device";
+  return "Unknown Device";
 }

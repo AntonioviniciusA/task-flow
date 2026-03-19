@@ -77,6 +77,9 @@ export function CreateTaskDialog({
   const { mutate } = useSWRConfig();
 
   const [isLoading, setIsLoading] = useState(false);
+  const [taskType, setTaskType] = useState<"simple" | "routine" | "all_day">(
+    "simple",
+  );
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [dueDate, setDueDate] = useState("");
@@ -86,7 +89,9 @@ export function CreateTaskDialog({
   const [notificationTime, setNotificationTime] = useState("09:00");
   const [priority, setPriority] = useState<TaskPriority>("medium");
   const [notificationEnabled, setNotificationEnabled] = useState(true);
-  const [allDay, setAllDay] = useState(false);
+  const [allDayTime1, setAllDayTime1] = useState("09:00");
+  const [allDayTime2, setAllDayTime2] = useState("14:00");
+  const [allDayTime3, setAllDayTime3] = useState("19:00");
   const [selectedIcon, setSelectedIcon] = useState<string | null>(null);
 
   // Extrair hora e minuto para os seletores
@@ -96,7 +101,15 @@ export function CreateTaskDialog({
     setNotificationTime(`${h.padStart(2, "0")}:${m.padStart(2, "0")}`);
   };
 
+  const updateAllDayTime = (index: 1 | 2 | 3, h: string, m: string) => {
+    const formatted = `${h.padStart(2, "0")}:${m.padStart(2, "0")}`;
+    if (index === 1) setAllDayTime1(formatted);
+    if (index === 2) setAllDayTime2(formatted);
+    if (index === 3) setAllDayTime3(formatted);
+  };
+
   function resetForm() {
+    setTaskType("simple");
     setTitle("");
     setDescription("");
     setDueDate("");
@@ -106,7 +119,9 @@ export function CreateTaskDialog({
     setNotificationTime("09:00");
     setPriority("medium");
     setNotificationEnabled(true);
-    setAllDay(false);
+    setAllDayTime1("09:00");
+    setAllDayTime2("14:00");
+    setAllDayTime3("19:00");
     setSelectedIcon(null);
   }
 
@@ -116,16 +131,26 @@ export function CreateTaskDialog({
 
     try {
       let finalDueDate = dueDate;
-      if (frequency === "weekly") {
+      const isAllDay = taskType === "all_day";
+      const isRoutine = taskType === "routine";
+
+      // Ajustar frequencia baseado no tipo
+      const finalFrequency = isRoutine ? frequency : "once";
+
+      // Se não for "uma vez", a data inicial é hoje
+      if (finalFrequency !== "once" && !finalDueDate) {
+        finalDueDate = new Date().toISOString().split("T")[0];
+      }
+
+      if (finalFrequency === "weekly") {
         const today = new Date();
         const targetDay = parseInt(frequencyDayOfWeek);
         let daysUntil = (targetDay - today.getDay() + 7) % 7;
 
         // Se for hoje, mas a hora já passou, agenda para a próxima semana
-        if (daysUntil === 0 && notificationTime) {
-          const [hours, minutes] = (allDay ? "09:00" : notificationTime)
-            .split(":")
-            .map(Number);
+        const checkTime = isAllDay ? allDayTime1 : notificationTime;
+        if (daysUntil === 0 && checkTime) {
+          const [hours, minutes] = checkTime.split(":").map(Number);
           if (
             today.getHours() > hours ||
             (today.getHours() === hours && today.getMinutes() >= minutes)
@@ -140,9 +165,13 @@ export function CreateTaskDialog({
       }
 
       let scheduledTimeIso: string | undefined;
-      if (notificationEnabled && finalDueDate && (notificationTime || allDay)) {
-        // Se for "dia todo", usamos o primeiro horário (09:00) como inicial
-        const timeToUse = allDay ? "09:00" : notificationTime;
+      if (
+        notificationEnabled &&
+        finalDueDate &&
+        (notificationTime || isAllDay)
+      ) {
+        // Se for "dia todo", usamos o primeiro horário configurado
+        const timeToUse = isAllDay ? allDayTime1 : notificationTime;
         // Criar data local e converter para ISO UTC
         const localDate = new Date(`${finalDueDate}T${timeToUse}`);
         if (!isNaN(localDate.getTime())) {
@@ -154,15 +183,22 @@ export function CreateTaskDialog({
         title,
         description: description || undefined,
         due_date: finalDueDate || undefined,
-        frequency,
+        frequency: finalFrequency,
         frequency_day_of_week:
-          frequency === "weekly" ? parseInt(frequencyDayOfWeek) : undefined,
+          finalFrequency === "weekly"
+            ? parseInt(frequencyDayOfWeek)
+            : undefined,
         frequency_day_of_month:
-          frequency === "monthly" ? parseInt(frequencyDayOfMonth) : undefined,
-        notification_time: allDay ? undefined : notificationTime || undefined,
+          finalFrequency === "monthly"
+            ? parseInt(frequencyDayOfMonth)
+            : undefined,
+        notification_time: isAllDay ? undefined : notificationTime || undefined,
         priority,
         notification_enabled: notificationEnabled,
-        all_day: allDay,
+        all_day: isAllDay,
+        all_day_time1: isAllDay ? allDayTime1 : null,
+        all_day_time2: isAllDay ? allDayTime2 : null,
+        all_day_time3: isAllDay ? allDayTime3 : null,
         icon: selectedIcon || undefined,
         scheduled_time_iso: scheduledTimeIso,
       };
@@ -202,6 +238,36 @@ export function CreateTaskDialog({
         <form onSubmit={handleSubmit} className="overflow-x-hidden">
           <div className="max-h-[60vh] overflow-y-auto overflow-x-hidden pr-2 -mr-2">
             <FieldGroup className="py-4">
+              <Field>
+                <FieldLabel>Tipo de Tarefa</FieldLabel>
+                <div className="grid grid-cols-3 gap-2">
+                  <Button
+                    type="button"
+                    variant={taskType === "simple" ? "default" : "outline"}
+                    className="text-xs h-9"
+                    onClick={() => setTaskType("simple")}
+                  >
+                    Simples
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={taskType === "routine" ? "default" : "outline"}
+                    className="text-xs h-9"
+                    onClick={() => setTaskType("routine")}
+                  >
+                    Rotina
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={taskType === "all_day" ? "default" : "outline"}
+                    className="text-xs h-9"
+                    onClick={() => setTaskType("all_day")}
+                  >
+                    Dia Todo
+                  </Button>
+                </div>
+              </Field>
+
               <Field>
                 <FieldLabel htmlFor="title">Título</FieldLabel>
                 <div className="flex gap-2">
@@ -282,7 +348,27 @@ export function CreateTaskDialog({
               </Field>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {frequency !== "weekly" && (
+                {taskType === "routine" && (
+                  <Field>
+                    <FieldLabel htmlFor="frequency">Frequência</FieldLabel>
+                    <Select
+                      value={frequency}
+                      onValueChange={(v) => setFrequency(v as TaskFrequency)}
+                      disabled={isLoading}
+                    >
+                      <SelectTrigger id="frequency">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="daily">Diária</SelectItem>
+                        <SelectItem value="weekly">Semanal</SelectItem>
+                        <SelectItem value="monthly">Mensal</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                )}
+
+                {taskType === "simple" && (
                   <Field>
                     <FieldLabel htmlFor="dueDate">Data</FieldLabel>
                     <Input
@@ -295,93 +381,7 @@ export function CreateTaskDialog({
                   </Field>
                 )}
 
-                <Field>
-                  <FieldLabel htmlFor="notificationTime">
-                    Hora da Notificação
-                  </FieldLabel>
-                  {allDay ? (
-                    <div className="flex h-10 w-full items-center rounded-md border border-input bg-muted/50 px-3 py-2 text-sm text-muted-foreground italic">
-                      3 notificações (09h, 14h, 19h)
-                    </div>
-                  ) : (
-                    <div className="flex gap-2">
-                      <select
-                        value={parseInt(currentHour)}
-                        onChange={(e) =>
-                          updateTime(e.target.value, currentMinute)
-                        }
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        {Array.from({ length: 24 }, (_, h) => (
-                          <option key={h} value={h}>
-                            {String(h).padStart(2, "0")}h
-                          </option>
-                        ))}
-                      </select>
-
-                      <select
-                        value={parseInt(currentMinute)}
-                        onChange={(e) =>
-                          updateTime(currentHour, e.target.value)
-                        }
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        {Array.from({ length: 12 }, (_, i) => i * 5).map(
-                          (m) => (
-                            <option key={m} value={m}>
-                              {String(m).padStart(2, "0")} min
-                            </option>
-                          ),
-                        )}
-                      </select>
-                    </div>
-                  )}
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {allDay
-                      ? "Notificações automáticas durante o dia"
-                      : "Intervalos de 5 minutos"}
-                  </p>
-                </Field>
-              </div>
-
-              <Field className="flex items-center justify-between p-3 rounded-lg border bg-muted/20">
-                <div>
-                  <FieldLabel htmlFor="allDay" className="mb-0">
-                    Dia Todo
-                  </FieldLabel>
-                  <p className="text-xs text-muted-foreground">
-                    Notificar 3 vezes ao longo do dia
-                  </p>
-                </div>
-                <Switch
-                  id="allDay"
-                  checked={allDay}
-                  onCheckedChange={setAllDay}
-                  disabled={isLoading}
-                />
-              </Field>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field>
-                  <FieldLabel htmlFor="frequency">Frequência</FieldLabel>
-                  <Select
-                    value={frequency}
-                    onValueChange={(v) => setFrequency(v as TaskFrequency)}
-                    disabled={isLoading}
-                  >
-                    <SelectTrigger id="frequency">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="once">Uma vez</SelectItem>
-                      <SelectItem value="daily">Diária</SelectItem>
-                      <SelectItem value="weekly">Semanal</SelectItem>
-                      <SelectItem value="monthly">Mensal</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </Field>
-
-                {frequency === "weekly" && (
+                {taskType === "routine" && frequency === "weekly" && (
                   <Field>
                     <FieldLabel htmlFor="dayOfWeek">Dia da Semana</FieldLabel>
                     <Select
@@ -405,7 +405,7 @@ export function CreateTaskDialog({
                   </Field>
                 )}
 
-                {frequency === "monthly" && (
+                {taskType === "routine" && frequency === "monthly" && (
                   <Field>
                     <FieldLabel htmlFor="dayOfMonth">Dia do Mês</FieldLabel>
                     <Select
@@ -428,25 +428,125 @@ export function CreateTaskDialog({
                     </Select>
                   </Field>
                 )}
+
+                <Field>
+                  <FieldLabel htmlFor="priority">Prioridade</FieldLabel>
+                  <Select
+                    value={priority}
+                    onValueChange={(v) => setPriority(v as TaskPriority)}
+                    disabled={isLoading}
+                  >
+                    <SelectTrigger id="priority">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Baixa</SelectItem>
+                      <SelectItem value="medium">Média</SelectItem>
+                      <SelectItem value="high">Alta</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
               </div>
 
-              <Field>
-                <FieldLabel htmlFor="priority">Prioridade</FieldLabel>
-                <Select
-                  value={priority}
-                  onValueChange={(v) => setPriority(v as TaskPriority)}
-                  disabled={isLoading}
-                >
-                  <SelectTrigger id="priority">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">Baixa</SelectItem>
-                    <SelectItem value="medium">Média</SelectItem>
-                    <SelectItem value="high">Alta</SelectItem>
-                  </SelectContent>
-                </Select>
-              </Field>
+              {taskType !== "all_day" ? (
+                <Field>
+                  <FieldLabel htmlFor="notificationTime">
+                    Hora da Notificação
+                  </FieldLabel>
+                  <div className="flex gap-2">
+                    <select
+                      value={parseInt(currentHour)}
+                      onChange={(e) =>
+                        updateTime(e.target.value, currentMinute)
+                      }
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {Array.from({ length: 24 }, (_, h) => (
+                        <option key={h} value={h}>
+                          {String(h).padStart(2, "0")}h
+                        </option>
+                      ))}
+                    </select>
+
+                    <select
+                      value={parseInt(currentMinute)}
+                      onChange={(e) => updateTime(currentHour, e.target.value)}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {Array.from({ length: 12 }, (_, i) => i * 5).map((m) => (
+                        <option key={m} value={m}>
+                          {String(m).padStart(2, "0")} min
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </Field>
+              ) : (
+                <div className="space-y-3 p-3 rounded-lg border bg-primary/5 animate-in fade-in zoom-in-95">
+                  <FieldLabel className="text-xs font-bold uppercase tracking-wider text-primary">
+                    Horários do Dia Todo
+                  </FieldLabel>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[1, 2, 3].map((i) => {
+                      const timeValue =
+                        i === 1
+                          ? allDayTime1
+                          : i === 2
+                            ? allDayTime2
+                            : i === 3
+                              ? allDayTime3
+                              : "09:00";
+                      const [h, m] = timeValue.split(":");
+                      return (
+                        <div key={i} className="space-y-1">
+                          <span className="text-[10px] text-muted-foreground">
+                            Alerta {i}
+                          </span>
+                          <div className="flex flex-col gap-1">
+                            <select
+                              value={parseInt(h)}
+                              onChange={(e) =>
+                                updateAllDayTime(
+                                  i as 1 | 2 | 3,
+                                  e.target.value,
+                                  m,
+                                )
+                              }
+                              className="h-8 w-full rounded-md border border-input bg-background px-1 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                            >
+                              {Array.from({ length: 24 }, (_, hour) => (
+                                <option key={hour} value={hour}>
+                                  {String(hour).padStart(2, "0")}h
+                                </option>
+                              ))}
+                            </select>
+                            <select
+                              value={parseInt(m)}
+                              onChange={(e) =>
+                                updateAllDayTime(
+                                  i as 1 | 2 | 3,
+                                  h,
+                                  e.target.value,
+                                )
+                              }
+                              className="h-8 w-full rounded-md border border-input bg-background px-1 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                            >
+                              {Array.from(
+                                { length: 12 },
+                                (_, min) => min * 5,
+                              ).map((min) => (
+                                <option key={min} value={min}>
+                                  {String(min).padStart(2, "0")}m
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               <Field className="flex items-center justify-between">
                 <div>

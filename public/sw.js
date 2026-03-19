@@ -87,9 +87,10 @@ self.addEventListener("push", (event) => {
     image: data.image,
     vibrate: data.vibrate || [200, 100, 200],
     silent: data.silent || false,
+    sound: data.sound || "default",
     tag: String(data.tag || data.taskId || "task-notification"),
     renotify: true,
-    requireInteraction: true,
+    requireInteraction: data.requireInteraction !== undefined ? data.requireInteraction : true,
     data: {
       taskId: String(data.taskId),
       url: data.url || "/dashboard/notification-action?taskId=" + data.taskId,

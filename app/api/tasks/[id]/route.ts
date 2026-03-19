@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { nanoid } from "nanoid";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { scheduleTask, cancelTask, calculateNextRun } from "@/lib/scheduler";
+import { addPoints, POINTS_PER_PRIORITY } from "@/lib/gamification";
 import type { ApiResponse, Task, UpdateTaskInput } from "@/lib/types";
 
 interface RouteContext {
@@ -25,8 +27,12 @@ export async function GET(
     const { id } = await context.params;
 
     const result = await db.execute({
-      sql: "SELECT * FROM tasks WHERE id = ? AND user_id = ?",
-      args: [id, session.user.id],
+      sql: `
+        SELECT t.* FROM tasks t
+        WHERE t.id = ? 
+        AND (t.user_id = ? OR t.id IN (SELECT task_id FROM task_shares WHERE user_id = ?))
+      `,
+      args: [id, session.user.id, session.user.id],
     });
 
     if (result.rows.length === 0) {
@@ -68,10 +74,14 @@ export async function PATCH(
     const { id } = await context.params;
     const body: UpdateTaskInput = await request.json();
 
-    // Verify task exists and belongs to user
+    // Verify task exists and user has permission (owner or participant)
     const existing = await db.execute({
-      sql: "SELECT * FROM tasks WHERE id = ? AND user_id = ?",
-      args: [id, session.user.id],
+      sql: `
+        SELECT t.* FROM tasks t
+        WHERE t.id = ? 
+        AND (t.user_id = ? OR t.id IN (SELECT task_id FROM task_shares WHERE user_id = ?))
+      `,
+      args: [id, session.user.id, session.user.id],
     });
 
     if (existing.rows.length === 0) {
@@ -186,6 +196,10 @@ export async function PATCH(
         if (body.status === "completed") {
           updates.push("completed_at = ?");
           args.push(now);
+
+          // Gamificação: Adicionar pontos ao concluir tarefa usando a lib
+          const points = POINTS_PER_PRIORITY[currentTask.priority] || 25;
+          await addPoints(session.user.id, points, "task_completed", id);
         }
       }
     }
@@ -200,15 +214,30 @@ export async function PATCH(
       args.push(body.all_day ? 1 : 0);
     }
 
+    if (body.all_day_time1 !== undefined) {
+      updates.push("all_day_time1 = ?");
+      args.push(body.all_day_time1);
+    }
+
+    if (body.all_day_time2 !== undefined) {
+      updates.push("all_day_time2 = ?");
+      args.push(body.all_day_time2);
+    }
+
+    if (body.all_day_time3 !== undefined) {
+      updates.push("all_day_time3 = ?");
+      args.push(body.all_day_time3);
+    }
+
     if (body.icon !== undefined) {
       updates.push("icon = ?");
       args.push(body.icon || null);
     }
 
-    args.push(id, session.user.id);
+    args.push(id);
 
     await db.execute({
-      sql: `UPDATE tasks SET ${updates.join(", ")} WHERE id = ? AND user_id = ?`,
+      sql: `UPDATE tasks SET ${updates.join(", ")} WHERE id = ?`,
       args,
     });
 
@@ -246,6 +275,9 @@ export async function PATCH(
         body.frequency_day_of_week !== undefined ||
         body.frequency_day_of_month !== undefined ||
         body.all_day !== undefined ||
+        body.all_day_time1 !== undefined ||
+        body.all_day_time2 !== undefined ||
+        body.all_day_time3 !== undefined ||
         body.scheduled_time_iso !== undefined ||
         (body.status === "completed" &&
           currentTask.frequency &&
@@ -267,8 +299,10 @@ export async function PATCH(
             await scheduleTask(id, scheduledDate);
           }
         } else if (allDay && dueDate) {
-          // Para "dia todo", o primeiro horário é 09:00
-          const scheduledDate = new Date(`${dueDate}T09:00`);
+          // Para "dia todo", o primeiro horário é o configurado em all_day_time1
+          const time1 =
+            body.all_day_time1 || currentTask.all_day_time1 || "09:00";
+          const scheduledDate = new Date(`${dueDate}T${time1}`);
           if (!isNaN(scheduledDate.getTime())) {
             await scheduleTask(id, scheduledDate);
           }
@@ -338,10 +372,15 @@ export async function DELETE(
 
     const { id } = await context.params;
 
-    // Get task to cancel notification if needed
+    // Verify permission and get owner status
     const existing = await db.execute({
-      sql: "SELECT scheduled_time FROM tasks WHERE id = ? AND user_id = ?",
-      args: [id, session.user.id],
+      sql: `
+        SELECT user_id, scheduled_time 
+        FROM tasks 
+        WHERE id = ? 
+        AND (user_id = ? OR id IN (SELECT task_id FROM task_shares WHERE user_id = ?))
+      `,
+      args: [id, session.user.id, session.user.id],
     });
 
     if (existing.rows.length === 0) {
@@ -351,23 +390,37 @@ export async function DELETE(
       );
     }
 
-    // Cancel scheduled notification
-    await cancelTask(id);
+    const taskData = existing.rows[0];
+    const isOwner = taskData.user_id === session.user.id;
 
-    // Delete task and its categories
-    await db.execute({
-      sql: "DELETE FROM task_categories WHERE task_id = ?",
-      args: [id],
-    });
-
-    await db.execute({
-      sql: "DELETE FROM tasks WHERE id = ? AND user_id = ?",
-      args: [id, session.user.id],
-    });
+    if (isOwner) {
+      // Owner deletes for everyone
+      await cancelTask(id);
+      await db.execute({
+        sql: "DELETE FROM task_categories WHERE task_id = ?",
+        args: [id],
+      });
+      await db.execute({
+        sql: "DELETE FROM task_shares WHERE task_id = ?",
+        args: [id],
+      });
+      await db.execute({
+        sql: "DELETE FROM tasks WHERE id = ?",
+        args: [id],
+      });
+    } else {
+      // Participant just leaves the share
+      await db.execute({
+        sql: "DELETE FROM task_shares WHERE task_id = ? AND user_id = ?",
+        args: [id, session.user.id],
+      });
+    }
 
     return NextResponse.json({
       success: true,
-      message: "Tarefa excluída com sucesso",
+      message: isOwner
+        ? "Tarefa excluída com sucesso"
+        : "Você saiu da tarefa compartilhada",
     });
   } catch (error) {
     console.error("Error deleting task:", error);

@@ -28,8 +28,12 @@ export interface Task {
   status: "pending" | "in_progress" | "completed" | "cancelled";
   notification_enabled: boolean;
   all_day: boolean;
+  all_day_time1: string | null;
+  all_day_time2: string | null;
+  all_day_time3: string | null;
   executed: boolean;
   scheduled_time: string | null;
+  network_context_id: string | null;
   created_at: string;
   updated_at: string;
   completed_at: string | null;

@@ -9,8 +9,11 @@ import { GamificationSystem } from "@/components/gamification-system";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LayoutDashboard, Trophy, Users as UsersIcon } from "lucide-react";
 import { GroupManager } from "@/components/group-manager";
+import { auth } from "@/lib/auth";
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const session = await auth();
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -65,7 +68,7 @@ export default function DashboardPage() {
           value="groups"
           className="m-0 outline-none animate-in fade-in slide-in-from-bottom-2"
         >
-          <GroupManager />
+          <GroupManager userId={session?.user?.id || ""} />
         </TabsContent>
 
         <TabsContent

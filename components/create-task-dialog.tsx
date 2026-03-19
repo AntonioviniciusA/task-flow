@@ -46,7 +46,7 @@ import {
   Zap,
   Flag,
   AlertCircle,
-  CheckCircle2,
+  Check,
 } from "lucide-react";
 
 interface CreateTaskDialogProps {

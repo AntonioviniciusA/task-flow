@@ -26,9 +26,10 @@ export async function GET(
     const offset = parseInt(searchParams.get("offset") || "0");
 
     let sql = `
-      SELECT t.*, g.name as group_name, u_creator.name as creator_name, u_completer.name as completer_name
+      SELECT t.*, g.name as group_name, u_creator.name as creator_name, u_completer.name as completer_name, gm.role as user_group_role
       FROM tasks t
       LEFT JOIN groups g ON t.group_id = g.id
+      LEFT JOIN group_members gm ON t.group_id = gm.group_id AND gm.user_id = ?
       LEFT JOIN users u_creator ON t.user_id = u_creator.id
       LEFT JOIN users u_completer ON t.completed_by_user_id = u_completer.id
       WHERE (t.user_id = ? 
@@ -36,6 +37,7 @@ export async function GET(
       OR t.group_id IN (SELECT group_id FROM group_members WHERE user_id = ?))
     `;
     const args: (string | number)[] = [
+      session.user.id,
       session.user.id,
       session.user.id,
       session.user.id,
@@ -115,6 +117,24 @@ export async function POST(
 
     const id = nanoid();
     const now = new Date().toISOString();
+
+    if (body.group_id) {
+      // Verificar se o usuário é admin do grupo
+      const adminCheck = await db.execute({
+        sql: "SELECT role FROM group_members WHERE group_id = ? AND user_id = ? AND role = 'admin'",
+        args: [body.group_id, session.user.id],
+      });
+
+      if (adminCheck.rows.length === 0) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Apenas administradores podem criar tarefas no grupo",
+          },
+          { status: 403 },
+        );
+      }
+    }
 
     // 1. Inserir tarefa no banco
     await db.execute({

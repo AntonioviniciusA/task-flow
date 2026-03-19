@@ -31,10 +31,11 @@ import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 import { TaskCard } from "./task-card";
+import { GroupMembersDialog } from "./group-members-dialog";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
-export function GroupManager() {
+export function GroupManager({ userId }: { userId: string }) {
   const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
@@ -43,6 +44,7 @@ export function GroupManager() {
   const [joinPassword, setJoinPassword] = useState("");
   const [showJoinDialog, setShowJoinDialog] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showMembersDialog, setShowMembersDialog] = useState(false);
 
   const { data: groupsData, mutate: mutateGroups } = useSWR(
     "/api/groups",
@@ -53,9 +55,11 @@ export function GroupManager() {
     fetcher,
   );
 
-  const groups = groupsData?.data || [];
-  const groupTasks = groupTasksData?.data || [];
-  const activeGroup = groups.find((g: any) => g.id === activeGroupId);
+  const groups = groupsData?.data ?? [];
+  const groupTasks = groupTasksData?.data ?? [];
+  const activeGroup = activeGroupId
+    ? groups.find((g: any) => g.id === activeGroupId)
+    : null;
 
   async function handleCreateGroup(e: React.FormEvent) {
     e.preventDefault();
@@ -258,16 +262,26 @@ export function GroupManager() {
                     {new Date(activeGroup?.created_at).toLocaleDateString()}
                   </CardDescription>
                 </div>
-                {activeGroup?.role === "admin" && (
+                <div className="flex gap-2">
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => copyInviteLink(activeGroup.invite_token)}
+                    onClick={() => setShowMembersDialog(true)}
                   >
-                    <LinkIcon className="w-3 h-3 mr-2" />
-                    Convite
+                    <UsersIcon className="w-3 h-3 mr-2" />
+                    Membros
                   </Button>
-                )}
+                  {activeGroup?.role === "admin" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => copyInviteLink(activeGroup.invite_token)}
+                    >
+                      <LinkIcon className="w-3 h-3 mr-2" />
+                      Convite
+                    </Button>
+                  )}
+                </div>
               </div>
             </CardHeader>
             <CardContent className="p-6 space-y-4">
@@ -328,6 +342,17 @@ export function GroupManager() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {activeGroupId && activeGroup && userId && (
+        <GroupMembersDialog
+          groupId={activeGroupId}
+          groupName={activeGroup.name}
+          isAdmin={activeGroup.role === "admin"}
+          currentUserId={userId}
+          open={showMembersDialog}
+          onOpenChange={setShowMembersDialog}
+        />
+      )}
     </div>
   );
 }

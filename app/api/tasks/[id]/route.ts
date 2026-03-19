@@ -28,9 +28,10 @@ export async function GET(
 
     const result = await db.execute({
       sql: `
-        SELECT t.*, g.name as group_name 
+        SELECT t.*, g.name as group_name, gm.role as user_group_role
         FROM tasks t
         LEFT JOIN groups g ON t.group_id = g.id
+        LEFT JOIN group_members gm ON t.group_id = gm.group_id AND gm.user_id = ?
         WHERE t.id = ? 
         AND (
           t.user_id = ? 
@@ -38,7 +39,13 @@ export async function GET(
           OR t.group_id IN (SELECT group_id FROM group_members WHERE user_id = ?)
         )
       `,
-      args: [id, session.user.id, session.user.id, session.user.id],
+      args: [
+        session.user.id,
+        id,
+        session.user.id,
+        session.user.id,
+        session.user.id,
+      ],
     });
 
     if (result.rows.length === 0) {
@@ -83,7 +90,9 @@ export async function PATCH(
     // Verify task exists and user has permission (owner, participant or group member)
     const existing = await db.execute({
       sql: `
-        SELECT t.* FROM tasks t
+        SELECT t.*, gm.role as user_group_role 
+        FROM tasks t
+        LEFT JOIN group_members gm ON t.group_id = gm.group_id AND gm.user_id = ?
         WHERE t.id = ? 
         AND (
           t.user_id = ? 
@@ -91,7 +100,13 @@ export async function PATCH(
           OR t.group_id IN (SELECT group_id FROM group_members WHERE user_id = ?)
         )
       `,
-      args: [id, session.user.id, session.user.id, session.user.id],
+      args: [
+        session.user.id,
+        id,
+        session.user.id,
+        session.user.id,
+        session.user.id,
+      ],
     });
 
     if (existing.rows.length === 0) {
@@ -101,7 +116,18 @@ export async function PATCH(
       );
     }
 
-    const currentTask = existing.rows[0] as unknown as Task;
+    const currentTask = existing.rows[0] as any;
+
+    // Se for tarefa de grupo, apenas admins podem alterar
+    if (currentTask.group_id && currentTask.user_group_role !== "admin") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Apenas administradores podem alterar tarefas do grupo",
+        },
+        { status: 403 },
+      );
+    }
     const now = new Date().toISOString();
 
     // Build update query dynamically
@@ -210,7 +236,10 @@ export async function PATCH(
           args.push(session.user.id);
 
           // Gamificação: Adicionar pontos ao concluir tarefa usando a lib
-          const points = POINTS_PER_PRIORITY[currentTask.priority] || 25;
+          const points =
+            POINTS_PER_PRIORITY[
+              currentTask.priority as keyof typeof POINTS_PER_PRIORITY
+            ] || 25;
           await addPoints(session.user.id, points, "task_completed", id);
         }
       }
@@ -334,13 +363,13 @@ export async function PATCH(
     }
 
     // Handle category updates
-    if (body.category_ids !== undefined) {
+    if ((body as any).category_ids !== undefined) {
       await db.execute({
         sql: "DELETE FROM task_categories WHERE task_id = ?",
         args: [id],
       });
 
-      for (const categoryId of body.category_ids) {
+      for (const categoryId of (body as any).category_ids) {
         await db.execute({
           sql: "INSERT INTO task_categories (task_id, category_id) VALUES (?, ?)",
           args: [id, categoryId],
@@ -392,16 +421,23 @@ export async function DELETE(
     // Verify permission and get owner status
     const existing = await db.execute({
       sql: `
-        SELECT user_id, scheduled_time, group_id
-        FROM tasks 
-        WHERE id = ? 
+        SELECT t.user_id, t.scheduled_time, t.group_id, gm.role as user_group_role
+        FROM tasks t
+        LEFT JOIN group_members gm ON t.group_id = gm.group_id AND gm.user_id = ?
+        WHERE t.id = ? 
         AND (
-          user_id = ? 
-          OR id IN (SELECT task_id FROM task_shares WHERE user_id = ?)
-          OR group_id IN (SELECT group_id FROM group_members WHERE user_id = ?)
+          t.user_id = ? 
+          OR t.id IN (SELECT task_id FROM task_shares WHERE user_id = ?)
+          OR t.group_id IN (SELECT group_id FROM group_members WHERE user_id = ?)
         )
       `,
-      args: [id, session.user.id, session.user.id, session.user.id],
+      args: [
+        session.user.id,
+        id,
+        session.user.id,
+        session.user.id,
+        session.user.id,
+      ],
     });
 
     if (existing.rows.length === 0) {
@@ -414,6 +450,17 @@ export async function DELETE(
     const taskData = existing.rows[0];
     const isOwner = taskData.user_id === session.user.id;
     const isGroupTask = !!taskData.group_id;
+    const isAdmin = taskData.user_group_role === "admin";
+
+    if (isGroupTask && !isAdmin) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Apenas administradores podem excluir tarefas do grupo",
+        },
+        { status: 403 },
+      );
+    }
 
     if (isOwner || isGroupTask) {
       // Owner deletes for everyone. Group tasks are also deleted for everyone if any member deletes (or we can restrict to admin later)

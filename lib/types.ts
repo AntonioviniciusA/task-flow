@@ -28,6 +28,7 @@ export interface Task {
   creator_name?: string | null;
   completer_name?: string | null;
   completed_by_user_id?: string | null;
+  user_group_role?: "admin" | "member" | null;
   title: string;
   description: string | null;
   due_date: string | null;

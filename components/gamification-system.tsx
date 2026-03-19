@@ -92,10 +92,10 @@ export function GamificationSystem() {
     }
   }
 
-  const friends = friendsData?.data?.friends || [];
-  const pendingRequests = friendsData?.data?.pendingRequests || [];
-  const globalRanking = rankingData?.data || [];
-  const friendsRanking = friendsRankingData?.data || [];
+  const friends = friendsData?.data?.friends ?? [];
+  const pendingRequests = friendsData?.data?.pendingRequests ?? [];
+  const globalRanking = rankingData?.data ?? [];
+  const friendsRanking = friendsRankingData?.data ?? [];
 
   return (
     <div className="space-y-6">

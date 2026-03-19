@@ -91,10 +91,13 @@ export function TaskCard({ task, onUpdate }: TaskCardProps) {
   const [isSharing, setIsSharing] = useState(false);
 
   const { data: groupsData } = useSWR("/api/groups", fetcher);
-  const groups = groupsData?.data || [];
+  const groups = groupsData?.data ?? [];
 
   const isCompleted = task.status === "completed";
   const priority = priorityConfig[task.priority];
+  const isGroupTask = !!task.group_id;
+  const isAdmin = task.user_group_role === "admin";
+  const canEdit = !isGroupTask || isAdmin;
 
   async function handleMoveToGroup(groupId: string | null) {
     setIsUpdating(true);
@@ -263,7 +266,7 @@ export function TaskCard({ task, onUpdate }: TaskCardProps) {
                     "bg-success text-success-foreground border-success",
                 )}
                 onClick={isCompleted ? handleReopen : handleComplete}
-                disabled={isUpdating}
+                disabled={isUpdating || !canEdit}
               >
                 {isCompleted && <Check className="h-3 w-3" />}
               </Button>
@@ -312,6 +315,7 @@ export function TaskCard({ task, onUpdate }: TaskCardProps) {
               task={task}
               isSharing={isSharing}
               isCompleted={isCompleted}
+              canEdit={canEdit}
               onEdit={() => setShowEditDialog(true)}
               onShare={handleShare}
               onToggleStatus={isCompleted ? handleReopen : handleComplete}

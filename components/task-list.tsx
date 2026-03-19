@@ -29,7 +29,7 @@ export function TaskList() {
     return null; // Skeleton is shown by Suspense
   }
 
-  const tasks = data?.data || [];
+  const tasks = data?.data ?? [];
 
   const pendingTasks = tasks.filter(
     (t) => t.status === "pending" || t.status === "in_progress",

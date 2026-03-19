@@ -28,6 +28,7 @@ interface TaskContextMenuProps {
   task: Task;
   isSharing: boolean;
   isCompleted: boolean;
+  canEdit: boolean;
   onEdit: () => void;
   onShare: (mode: "copy" | "sync") => void;
   onToggleStatus: () => void;
@@ -39,6 +40,7 @@ export function TaskContextMenu({
   task,
   isSharing,
   isCompleted,
+  canEdit,
   onEdit,
   onShare,
   onToggleStatus,
@@ -53,12 +55,12 @@ export function TaskContextMenu({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={onEdit}>
+        <DropdownMenuItem onClick={onEdit} disabled={!canEdit}>
           <Edit className="h-4 w-4 mr-2" />
           Editar
         </DropdownMenuItem>
 
-        <DropdownMenuItem onClick={onMoveToGroup}>
+        <DropdownMenuItem onClick={onMoveToGroup} disabled={!canEdit}>
           <UsersIcon className="h-4 w-4 mr-2" />
           Vincular ao Grupo
         </DropdownMenuItem>
@@ -80,12 +82,12 @@ export function TaskContextMenu({
         </DropdownMenuItem>
         
         {isCompleted ? (
-          <DropdownMenuItem onClick={onToggleStatus}>
+          <DropdownMenuItem onClick={onToggleStatus} disabled={!canEdit}>
             <Clock className="h-4 w-4 mr-2" />
             Reabrir
           </DropdownMenuItem>
         ) : (
-          <DropdownMenuItem onClick={onToggleStatus}>
+          <DropdownMenuItem onClick={onToggleStatus} disabled={!canEdit}>
             <Check className="h-4 w-4 mr-2" />
             Concluir
           </DropdownMenuItem>
@@ -95,6 +97,7 @@ export function TaskContextMenu({
         <DropdownMenuItem
           className="text-destructive"
           onClick={onDelete}
+          disabled={!canEdit}
         >
           <Trash2 className="h-4 w-4 mr-2" />
           Excluir

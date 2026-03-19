@@ -6,13 +6,6 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -26,17 +19,12 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { Task } from "@/lib/types";
 import {
-  MoreVertical,
   Check,
   Clock,
-  Trash2,
-  Edit,
   Bell,
   BellOff,
   Calendar,
   Flag,
-  Share2,
-  Copy,
   Briefcase,
   ShoppingCart,
   Home,
@@ -50,8 +38,11 @@ import {
   Smile,
   Star,
   Zap,
+  Users as UsersIcon,
 } from "lucide-react";
 import { EditTaskDialog } from "./edit-task-dialog";
+import { TaskContextMenu } from "./task-context-menu";
+import { MoveToGroupDialog } from "./move-to-group-dialog";
 
 interface TaskCardProps {
   task: Task;
@@ -95,11 +86,41 @@ export function TaskCard({ task, onUpdate }: TaskCardProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showMoveDialog, setShowMoveDialog] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
 
+  const { data: groupsData } = useSWR("/api/groups", fetcher);
+  const groups = groupsData?.data || [];
+
   const isCompleted = task.status === "completed";
   const priority = priorityConfig[task.priority];
+
+  async function handleMoveToGroup(groupId: string | null) {
+    setIsUpdating(true);
+    try {
+      const response = await fetch(`/api/tasks/${task.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ group_id: groupId }),
+      });
+
+      if (response.ok) {
+        toast.success(
+          groupId
+            ? "Tarefa movida para o grupo!"
+            : "Tarefa movida para pessoal",
+        );
+        onUpdate();
+      } else {
+        toast.error("Erro ao mover tarefa");
+      }
+    } catch {
+      toast.error("Erro ao mover tarefa");
+    } finally {
+      setIsUpdating(false);
+    }
+  }
 
   async function handleComplete() {
     setIsUpdating(true);
@@ -247,6 +268,19 @@ export function TaskCard({ task, onUpdate }: TaskCardProps) {
                 {isCompleted && <Check className="h-3 w-3" />}
               </Button>
               <div className="min-w-0 flex-1">
+                {task.group_name && (
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
+                    <div className="flex items-center gap-1 text-[10px] font-bold text-primary uppercase tracking-wider">
+                      <UsersIcon className="w-3 h-3" />
+                      {task.group_name}
+                    </div>
+                    {task.creator_name && (
+                      <span className="text-[9px] text-muted-foreground">
+                        por {task.creator_name}
+                      </span>
+                    )}
+                  </div>
+                )}
                 <div className="flex items-start gap-2">
                   {Icon && (
                     <Icon className="w-4 h-4 text-muted-foreground shrink-0 mt-1" />
@@ -265,54 +299,25 @@ export function TaskCard({ task, onUpdate }: TaskCardProps) {
                     {task.description}
                   </p>
                 )}
+                {isCompleted && task.completer_name && (
+                  <div className="flex items-center gap-1 text-[10px] text-success mt-1 italic">
+                    <Check className="w-3 h-3" />
+                    Concluída por {task.completer_name}
+                  </div>
+                )}
               </div>
             </div>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 shrink-0"
-                >
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setShowEditDialog(true)}>
-                  <Edit className="h-4 w-4 mr-2" />
-                  Editar
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => handleShare("copy")} disabled={isSharing}>
-                  <Copy className="h-4 w-4 mr-2" />
-                  Compartilhar Cópia
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleShare("sync")} disabled={isSharing}>
-                  <Share2 className="h-4 w-4 mr-2" />
-                  Sincronizar Tarefa
-                </DropdownMenuItem>
-                {isCompleted ? (
-                  <DropdownMenuItem onClick={handleReopen}>
-                    <Clock className="h-4 w-4 mr-2" />
-                    Reabrir
-                  </DropdownMenuItem>
-                ) : (
-                  <DropdownMenuItem onClick={handleComplete}>
-                    <Check className="h-4 w-4 mr-2" />
-                    Concluir
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  className="text-destructive"
-                  onClick={() => setShowDeleteDialog(true)}
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Excluir
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <TaskContextMenu
+              task={task}
+              isSharing={isSharing}
+              isCompleted={isCompleted}
+              onEdit={() => setShowEditDialog(true)}
+              onShare={handleShare}
+              onToggleStatus={isCompleted ? handleReopen : handleComplete}
+              onDelete={() => setShowDeleteDialog(true)}
+              onMoveToGroup={() => setShowMoveDialog(true)}
+            />
           </div>
         </CardHeader>
 
@@ -406,6 +411,18 @@ export function TaskCard({ task, onUpdate }: TaskCardProps) {
         open={showEditDialog}
         onOpenChange={setShowEditDialog}
         onUpdate={onUpdate}
+      />
+
+      <MoveToGroupDialog
+        task={task}
+        groups={groups}
+        open={showMoveDialog}
+        onOpenChange={setShowMoveDialog}
+        onMove={(groupId) => {
+          handleMoveToGroup(groupId);
+          setShowMoveDialog(false);
+        }}
+        isLoading={isUpdating}
       />
     </>
   );

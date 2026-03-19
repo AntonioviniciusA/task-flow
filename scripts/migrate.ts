@@ -210,6 +210,63 @@ async function migrate() {
       console.error("Error creating points_log table:", e);
     }
 
+    // 9. Grupos
+    console.log("\nIniciando migração de Grupos...");
+    try {
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS groups (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          password_hash TEXT NOT NULL,
+          invite_token TEXT UNIQUE NOT NULL,
+          created_by TEXT NOT NULL,
+          created_at TEXT DEFAULT (datetime('now')),
+          updated_at TEXT DEFAULT (datetime('now')),
+          FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
+        )
+      `);
+      console.log('✓ Tabela "groups" criada/verificada');
+    } catch (e: any) {
+      console.error("Error creating groups table:", e);
+    }
+
+    try {
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS group_members (
+          group_id TEXT NOT NULL,
+          user_id TEXT NOT NULL,
+          role TEXT CHECK(role IN ('admin', 'member')) DEFAULT 'member',
+          joined_at TEXT DEFAULT (datetime('now')),
+          PRIMARY KEY (group_id, user_id),
+          FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+      `);
+      console.log('✓ Tabela "group_members" criada/verificada');
+    } catch (e: any) {
+      console.error("Error creating group_members table:", e);
+    }
+
+    try {
+      await client.execute(
+        "ALTER TABLE tasks ADD COLUMN group_id TEXT REFERENCES groups(id) ON DELETE CASCADE",
+      );
+      console.log('✓ Coluna "group_id" adicionada à tabela tasks');
+    } catch (e: any) {
+      if (!e.message.includes("duplicate column name")) throw e;
+    }
+
+    // 10. Rastreamento de conclusão de tarefas de grupo
+    console.log("\nIniciando migração de Rastreamento de Tarefas...");
+    try {
+      await client.execute(
+        "ALTER TABLE tasks ADD COLUMN completed_by_user_id TEXT REFERENCES users(id) ON DELETE SET NULL",
+      );
+      console.log('✓ Coluna "completed_by_user_id" adicionada à tabela tasks');
+    } catch (e: any) {
+      if (!e.message.includes("duplicate column name")) throw e;
+    }
+
     console.log("\n✅ Migrações concluídas com sucesso!");
   } catch (error) {
     console.error("Erro durante a migração:", error);

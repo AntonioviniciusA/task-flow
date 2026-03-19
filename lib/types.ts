@@ -23,6 +23,11 @@ export type TaskFrequency = "once" | "daily" | "weekly" | "monthly";
 export interface Task {
   id: string;
   user_id: string;
+  group_id?: string | null;
+  group_name?: string | null;
+  creator_name?: string | null;
+  completer_name?: string | null;
+  completed_by_user_id?: string | null;
   title: string;
   description: string | null;
   due_date: string | null;
@@ -107,6 +112,7 @@ export interface SyncQueueItem {
 // DTOs para criação/atualização
 export interface CreateTaskInput {
   title: string;
+  group_id?: string;
   description?: string;
   due_date?: string;
   frequency?: TaskFrequency;
@@ -126,6 +132,7 @@ export interface CreateTaskInput {
 
 export interface UpdateTaskInput {
   title?: string;
+  group_id?: string | null;
   description?: string;
   due_date?: string | null;
   frequency?: TaskFrequency;

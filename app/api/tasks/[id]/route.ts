@@ -28,11 +28,17 @@ export async function GET(
 
     const result = await db.execute({
       sql: `
-        SELECT t.* FROM tasks t
+        SELECT t.*, g.name as group_name 
+        FROM tasks t
+        LEFT JOIN groups g ON t.group_id = g.id
         WHERE t.id = ? 
-        AND (t.user_id = ? OR t.id IN (SELECT task_id FROM task_shares WHERE user_id = ?))
+        AND (
+          t.user_id = ? 
+          OR t.id IN (SELECT task_id FROM task_shares WHERE user_id = ?)
+          OR t.group_id IN (SELECT group_id FROM group_members WHERE user_id = ?)
+        )
       `,
-      args: [id, session.user.id, session.user.id],
+      args: [id, session.user.id, session.user.id, session.user.id],
     });
 
     if (result.rows.length === 0) {
@@ -74,14 +80,18 @@ export async function PATCH(
     const { id } = await context.params;
     const body: UpdateTaskInput = await request.json();
 
-    // Verify task exists and user has permission (owner or participant)
+    // Verify task exists and user has permission (owner, participant or group member)
     const existing = await db.execute({
       sql: `
         SELECT t.* FROM tasks t
         WHERE t.id = ? 
-        AND (t.user_id = ? OR t.id IN (SELECT task_id FROM task_shares WHERE user_id = ?))
+        AND (
+          t.user_id = ? 
+          OR t.id IN (SELECT task_id FROM task_shares WHERE user_id = ?)
+          OR t.group_id IN (SELECT group_id FROM group_members WHERE user_id = ?)
+        )
       `,
-      args: [id, session.user.id, session.user.id],
+      args: [id, session.user.id, session.user.id, session.user.id],
     });
 
     if (existing.rows.length === 0) {
@@ -196,6 +206,8 @@ export async function PATCH(
         if (body.status === "completed") {
           updates.push("completed_at = ?");
           args.push(now);
+          updates.push("completed_by_user_id = ?");
+          args.push(session.user.id);
 
           // Gamificação: Adicionar pontos ao concluir tarefa usando a lib
           const points = POINTS_PER_PRIORITY[currentTask.priority] || 25;
@@ -232,6 +244,11 @@ export async function PATCH(
     if (body.icon !== undefined) {
       updates.push("icon = ?");
       args.push(body.icon || null);
+    }
+
+    if (body.group_id !== undefined) {
+      updates.push("group_id = ?");
+      args.push(body.group_id || null);
     }
 
     args.push(id);
@@ -375,12 +392,16 @@ export async function DELETE(
     // Verify permission and get owner status
     const existing = await db.execute({
       sql: `
-        SELECT user_id, scheduled_time 
+        SELECT user_id, scheduled_time, group_id
         FROM tasks 
         WHERE id = ? 
-        AND (user_id = ? OR id IN (SELECT task_id FROM task_shares WHERE user_id = ?))
+        AND (
+          user_id = ? 
+          OR id IN (SELECT task_id FROM task_shares WHERE user_id = ?)
+          OR group_id IN (SELECT group_id FROM group_members WHERE user_id = ?)
+        )
       `,
-      args: [id, session.user.id, session.user.id],
+      args: [id, session.user.id, session.user.id, session.user.id],
     });
 
     if (existing.rows.length === 0) {
@@ -392,9 +413,10 @@ export async function DELETE(
 
     const taskData = existing.rows[0];
     const isOwner = taskData.user_id === session.user.id;
+    const isGroupTask = !!taskData.group_id;
 
-    if (isOwner) {
-      // Owner deletes for everyone
+    if (isOwner || isGroupTask) {
+      // Owner deletes for everyone. Group tasks are also deleted for everyone if any member deletes (or we can restrict to admin later)
       await cancelTask(id);
       await db.execute({
         sql: "DELETE FROM task_categories WHERE task_id = ?",
@@ -418,9 +440,10 @@ export async function DELETE(
 
     return NextResponse.json({
       success: true,
-      message: isOwner
-        ? "Tarefa excluída com sucesso"
-        : "Você saiu da tarefa compartilhada",
+      message:
+        isOwner || isGroupTask
+          ? "Tarefa excluída com sucesso"
+          : "Você saiu da tarefa compartilhada",
     });
   } catch (error) {
     console.error("Error deleting task:", error);

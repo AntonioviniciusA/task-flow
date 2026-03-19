@@ -21,15 +21,31 @@ export async function GET(
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
     const priority = searchParams.get("priority");
+    const groupId = searchParams.get("groupId");
     const limit = parseInt(searchParams.get("limit") || "50");
     const offset = parseInt(searchParams.get("offset") || "0");
 
     let sql = `
-      SELECT t.* FROM tasks t
-      WHERE t.user_id = ? 
+      SELECT t.*, g.name as group_name, u_creator.name as creator_name, u_completer.name as completer_name
+      FROM tasks t
+      LEFT JOIN groups g ON t.group_id = g.id
+      LEFT JOIN users u_creator ON t.user_id = u_creator.id
+      LEFT JOIN users u_completer ON t.completed_by_user_id = u_completer.id
+      WHERE (t.user_id = ? 
       OR t.id IN (SELECT task_id FROM task_shares WHERE user_id = ?)
+      OR t.group_id IN (SELECT group_id FROM group_members WHERE user_id = ?))
     `;
-    const args: (string | number)[] = [session.user.id, session.user.id];
+    const args: (string | number)[] = [
+      session.user.id,
+      session.user.id,
+      session.user.id,
+    ];
+
+    if (groupId) {
+      // Se filtrar por grupo, busca apenas tarefas desse grupo específico (já garantido pelo WHERE acima, mas forçamos o filtro)
+      sql += " AND t.group_id = ?";
+      args.push(groupId);
+    }
 
     if (status) {
       sql += " AND t.status = ?";
@@ -107,9 +123,9 @@ export async function POST(
         frequency, frequency_day_of_week, frequency_day_of_month, notification_time,
         priority, status, notification_enabled, all_day, 
         all_day_time1, all_day_time2, all_day_time3,
-        icon, executed, scheduled_time,
+        icon, executed, scheduled_time, group_id,
         created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, ?, ?)`,
       args: [
         id,
         session.user.id,
@@ -124,10 +140,11 @@ export async function POST(
         "pending",
         body.notification_enabled !== false ? 1 : 0,
         body.all_day ? 1 : 0,
-        body.all_day_time1 || '09:00',
-        body.all_day_time2 || '14:00',
-        body.all_day_time3 || '19:00',
+        body.all_day_time1 || "09:00",
+        body.all_day_time2 || "14:00",
+        body.all_day_time3 || "19:00",
         body.icon || null,
+        body.group_id || null, // Se for tarefa de grupo, o ID vem aqui
         now,
         now,
       ],
@@ -187,10 +204,11 @@ export async function POST(
       status: "pending",
       notification_enabled: body.notification_enabled !== false,
       all_day: !!body.all_day,
-      all_day_time1: body.all_day_time1 || '09:00',
-      all_day_time2: body.all_day_time2 || '14:00',
-      all_day_time3: body.all_day_time3 || '19:00',
+      all_day_time1: body.all_day_time1 || "09:00",
+      all_day_time2: body.all_day_time2 || "14:00",
+      all_day_time3: body.all_day_time3 || "19:00",
       icon: body.icon || null,
+      group_id: body.group_id || null,
       executed: false,
       scheduled_time: finalScheduledTime,
       created_at: now,

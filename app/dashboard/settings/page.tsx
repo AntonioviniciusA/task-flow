@@ -38,6 +38,7 @@ import {
 import type { Device } from "@/lib/types";
 import { Input } from "@/components/ui/input";
 import { PwaInstallInstructions } from "@/components/pwa-install-instructions";
+import { signOut } from "next-auth/react";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -160,6 +161,22 @@ export default function SettingsPage() {
 
       if (response.ok) {
         toast.success("Dispositivo removido");
+
+        // Se o dispositivo removido for este mesmo, deslogar para garantir segurança
+        try {
+          const registration = await navigator.serviceWorker.getRegistration();
+          const currentSubscription =
+            await registration?.pushManager.getSubscription();
+
+          if (currentSubscription?.endpoint === endpoint) {
+            toast.info("Este dispositivo foi removido. Deslogando...");
+            setTimeout(() => signOut({ callbackUrl: "/login" }), 2000);
+            return;
+          }
+        } catch (swError) {
+          console.error("Erro ao verificar service worker:", swError);
+        }
+
         mutate();
       } else {
         toast.error("Erro ao remover dispositivo");

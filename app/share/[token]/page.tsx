@@ -2,11 +2,22 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
-import { CheckCircle2, AlertCircle, Calendar, Clock, Flag } from "lucide-react";
+import {
+  Check as CheckCircle2,
+  AlertCircle,
+  Calendar,
+  Flag,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
@@ -60,9 +71,9 @@ export default function SharePage() {
       const res = await fetch("/api/tasks/join", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          taskIds: shareData?.tasks.map(t => t.id),
-          mode: shareData?.mode 
+        body: JSON.stringify({
+          taskIds: shareData?.tasks.map((t) => t.id),
+          mode: shareData?.mode,
         }),
       });
 
@@ -104,7 +115,10 @@ export default function SharePage() {
             <CardDescription>{error}</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button className="w-full" onClick={() => router.push("/dashboard")}>
+            <Button
+              className="w-full"
+              onClick={() => router.push("/dashboard")}
+            >
               Voltar para o Dashboard
             </Button>
           </CardContent>
@@ -128,25 +142,37 @@ export default function SharePage() {
             {mode === "copy" ? "Copiar Tarefas" : "Sincronizar Tarefas"}
           </CardTitle>
           <CardDescription>
-            {mode === "copy" 
-              ? "Você recebeu uma cópia destas tarefas." 
+            {mode === "copy"
+              ? "Você recebeu uma cópia destas tarefas."
               : "Você foi convidado para acompanhar estas tarefas em tempo real."}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-3 max-h-[40vh] overflow-y-auto pr-2 -mr-2">
-            {tasks.map(task => (
-              <div key={task.id} className="p-3 rounded-xl bg-muted/50 border space-y-2">
-                <h3 className="font-bold text-sm leading-tight">{task.title}</h3>
+            {tasks.map((task) => (
+              <div
+                key={task.id}
+                className="p-3 rounded-xl bg-muted/50 border space-y-2"
+              >
+                <h3 className="font-bold text-sm leading-tight">
+                  {task.title}
+                </h3>
                 <div className="flex flex-wrap gap-1.5">
                   <Badge variant="outline" className="text-[10px] h-5 px-1.5">
-                    <Flag className={cn("w-2.5 h-2.5 mr-1", task.priority === 'high' ? 'text-destructive' : 'text-primary')} />
+                    <Flag
+                      className={cn(
+                        "w-2.5 h-2.5 mr-1",
+                        task.priority === "high"
+                          ? "text-destructive"
+                          : "text-primary",
+                      )}
+                    />
                     {task.priority}
                   </Badge>
                   {task.due_date && (
                     <Badge variant="outline" className="text-[10px] h-5 px-1.5">
                       <Calendar className="w-2.5 h-2.5 mr-1" />
-                      {new Date(task.due_date).toLocaleDateString('pt-BR')}
+                      {new Date(task.due_date).toLocaleDateString("pt-BR")}
                     </Badge>
                   )}
                 </div>
@@ -155,25 +181,32 @@ export default function SharePage() {
           </div>
 
           <div className="space-y-3">
-            <Button 
-              className="w-full h-12 text-base font-semibold" 
+            <Button
+              className="w-full h-12 text-base font-semibold"
               onClick={handleJoin}
               disabled={isJoining}
             >
-              {isJoining ? <Spinner className="mr-2" /> : mode === "copy" ? "Copiar para minha lista" : "Aceitar e Sincronizar"}
+              {isJoining ? (
+                <Spinner className="mr-2" />
+              ) : mode === "copy" ? (
+                "Copiar para minha lista"
+              ) : (
+                "Aceitar e Sincronizar"
+              )}
             </Button>
-            <Button 
-              variant="ghost" 
-              className="w-full" 
+            <Button
+              variant="ghost"
+              className="w-full"
               onClick={() => router.push("/dashboard")}
               disabled={isJoining}
             >
               Cancelar
             </Button>
           </div>
-          
+
           <p className="text-[10px] text-center text-muted-foreground">
-            Este link expira em {new Date(shareData.expires_at).toLocaleString('pt-BR')}.
+            Este link expira em{" "}
+            {new Date(shareData.expires_at).toLocaleString("pt-BR")}.
           </p>
         </CardContent>
       </Card>

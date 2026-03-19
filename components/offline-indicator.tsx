@@ -32,7 +32,7 @@ export function OfflineIndicator() {
     }
   }, [])
 
-  if (!showBadge && isOnline) return null
+  if (!showBadge) return null
 
   return (
     <div

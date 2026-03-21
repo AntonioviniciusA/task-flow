@@ -56,6 +56,7 @@ export default function SettingsPage() {
     "/api/devices",
     fetcher,
   );
+  const devices = data?.data ?? [];
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [persistentInterval, setPersistentInterval] = useState("60");
@@ -247,8 +248,6 @@ export default function SettingsPage() {
       toast.error("Falha na conexão");
     }
   }
-
-  const devices = data?.data || [];
 
   return (
     <div className="space-y-6">

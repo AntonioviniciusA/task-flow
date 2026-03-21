@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LayoutDashboard, Trophy, Users as UsersIcon } from "lucide-react";
 import { GroupManager } from "@/components/group-manager";
 import { auth } from "@/lib/auth";
+import { ImportScheduleButton } from "@/components/import-schedule-button";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -26,6 +27,7 @@ export default async function DashboardPage() {
           </p>
         </div>
         <div className="flex gap-2 shrink-0">
+          <ImportScheduleButton />
           <JoinTaskButton />
           <CreateTaskButton />
         </div>

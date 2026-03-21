@@ -12,14 +12,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import {
-  ShieldCheck,
-  UserMinus,
-  ShieldAlert,
+import { 
+  ShieldCheck, 
+  UserMinus, 
+  ShieldAlert, 
   MoreHorizontal,
   Check,
   X,
-  Loader2,
+  Loader2
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -59,7 +59,7 @@ export function GroupMembersDialog({
 }: GroupMembersDialogProps) {
   const { data, mutate, isLoading } = useSWR(
     open ? `/api/groups/${groupId}/members` : null,
-    fetcher,
+    fetcher
   );
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
 
@@ -74,9 +74,7 @@ export function GroupMembersDialog({
         body: JSON.stringify({ userId, role: newRole }),
       });
       if (res.ok) {
-        toast.success(
-          newRole === "admin" ? "Membro promovido!" : "Cargo removido",
-        );
+        toast.success(newRole === "admin" ? "Membro promovido!" : "Cargo removido");
         mutate();
       } else {
         const err = await res.json();
@@ -91,15 +89,12 @@ export function GroupMembersDialog({
 
   async function handleKick(userId: string) {
     if (!confirm("Tem certeza que deseja remover este membro?")) return;
-
+    
     setIsProcessing(userId);
     try {
-      const res = await fetch(
-        `/api/groups/${groupId}/members?userId=${userId}`,
-        {
-          method: "DELETE",
-        },
-      );
+      const res = await fetch(`/api/groups/${groupId}/members?userId=${userId}`, {
+        method: "DELETE",
+      });
       if (res.ok) {
         toast.success("Membro removido!");
         mutate();
@@ -132,16 +127,11 @@ export function GroupMembersDialog({
               <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
             </div>
           ) : members.length === 0 ? (
-            <p className="text-center text-sm text-muted-foreground italic">
-              Nenhum membro encontrado.
-            </p>
+            <p className="text-center text-sm text-muted-foreground italic">Nenhum membro encontrado.</p>
           ) : (
             <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
               {members.map((member) => (
-                <div
-                  key={member.id}
-                  className="flex items-center justify-between p-2 rounded-lg border bg-card"
-                >
+                <div key={member.id} className="flex items-center justify-between p-2 rounded-lg border bg-card">
                   <div className="flex items-center gap-3">
                     <Avatar className="h-8 w-8">
                       <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
@@ -155,37 +145,22 @@ export function GroupMembersDialog({
                           {member.id === currentUserId && " (Você)"}
                         </span>
                         {member.role === "admin" ? (
-                          <Badge
-                            variant="secondary"
-                            className="text-[8px] h-3.5 px-1 bg-primary/10 text-primary border-primary/20"
-                          >
+                          <Badge variant="secondary" className="text-[8px] h-3.5 px-1 bg-primary/10 text-primary border-primary/20">
                             <ShieldCheck className="w-2 h-2 mr-0.5" />
                             Admin
                           </Badge>
                         ) : (
-                          <Badge
-                            variant="outline"
-                            className="text-[8px] h-3.5 px-1"
-                          >
-                            Membro
-                          </Badge>
+                          <Badge variant="outline" className="text-[8px] h-3.5 px-1">Membro</Badge>
                         )}
                       </div>
-                      <span className="text-[10px] text-muted-foreground truncate">
-                        {member.email}
-                      </span>
+                      <span className="text-[10px] text-muted-foreground truncate">{member.email}</span>
                     </div>
                   </div>
 
                   {isAdmin && member.id !== currentUserId && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          disabled={!!isProcessing}
-                        >
+                        <Button variant="ghost" size="icon" className="h-8 w-8" disabled={!!isProcessing}>
                           {isProcessing === member.id ? (
                             <Loader2 className="w-3 h-3 animate-spin" />
                           ) : (
@@ -195,26 +170,17 @@ export function GroupMembersDialog({
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         {member.role === "member" ? (
-                          <DropdownMenuItem
-                            onClick={() => handleUpdateRole(member.id, "admin")}
-                          >
+                          <DropdownMenuItem onClick={() => handleUpdateRole(member.id, "admin")}>
                             <ShieldCheck className="w-4 h-4 mr-2" />
                             Dar Admin
                           </DropdownMenuItem>
                         ) : (
-                          <DropdownMenuItem
-                            onClick={() =>
-                              handleUpdateRole(member.id, "member")
-                            }
-                          >
+                          <DropdownMenuItem onClick={() => handleUpdateRole(member.id, "member")}>
                             <ShieldAlert className="w-4 h-4 mr-2" />
                             Remover Admin
                           </DropdownMenuItem>
                         )}
-                        <DropdownMenuItem
-                          className="text-destructive"
-                          onClick={() => handleKick(member.id)}
-                        >
+                        <DropdownMenuItem className="text-destructive" onClick={() => handleKick(member.id)}>
                           <UserMinus className="w-4 h-4 mr-2" />
                           Kikar Membro
                         </DropdownMenuItem>

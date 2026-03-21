@@ -57,9 +57,7 @@ export function GroupManager({ userId }: { userId: string }) {
 
   const groups = groupsData?.data ?? [];
   const groupTasks = groupTasksData?.data ?? [];
-  const activeGroup = activeGroupId
-    ? groups.find((g: any) => g.id === activeGroupId)
-    : null;
+  const activeGroup = activeGroupId ? groups.find((g: any) => g.id === activeGroupId) : null;
 
   async function handleCreateGroup(e: React.FormEvent) {
     e.preventDefault();

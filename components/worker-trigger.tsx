@@ -4,21 +4,25 @@ import { useEffect } from "react";
 
 export function WorkerTrigger() {
   useEffect(() => {
-    // Função para chamar o worker
-    const triggerWorker = async () => {
+    let lastRun = 0;
+    const MIN_INTERVAL = 60000; // 1 minuto de intervalo mínimo entre triggers manuais/visibilidade
+
+    const triggerWorker = async (force = false) => {
+      const now = Date.now();
+      if (!force && now - lastRun < MIN_INTERVAL) {
+        return;
+      }
+      
+      lastRun = now;
       try {
-        // Agora chama a nova rota de check-tasks. 
-        // Nota: Esta chamada via browser não terá o Bearer Token, 
-        // mas em desenvolvimento podemos permitir ou apenas ignorar o erro 401.
         await fetch("/api/check-tasks");
       } catch (error) {
-        // Silencioso em produção, apenas para manter o cron rodando
         console.error("Worker trigger failed", error);
       }
     };
 
-    // Chama ao carregar e quando a aba volta a ficar visível
-    triggerWorker();
+    // Chama ao carregar
+    triggerWorker(true);
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
@@ -28,23 +32,21 @@ export function WorkerTrigger() {
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
-    // Tenta registrar um Periodic Sync se o navegador suportar (Chrome/Android)
+    // Tenta registrar um Periodic Sync
     if ("serviceWorker" in navigator && "periodicSync" in (navigator as any)) {
       navigator.serviceWorker.ready.then(async (registration: any) => {
         try {
           await registration.periodicSync.register("task-worker", {
-            minInterval: 5 * 60 * 1000, // 5 minutos
+            minInterval: 5 * 60 * 1000,
           });
         } catch (e) {
-          console.log(
-            "Periodic Sync não pôde ser registrado, usando setInterval como fallback.",
-          );
+          // Fallback silencioso
         }
       });
     }
 
-    // Configura o intervalo de 5 minutos (enquanto a aba estiver aberta)
-    const interval = setInterval(triggerWorker, 300000);
+    // Intervalo de 5 minutos
+    const interval = setInterval(() => triggerWorker(true), 300000);
 
     return () => {
       clearInterval(interval);

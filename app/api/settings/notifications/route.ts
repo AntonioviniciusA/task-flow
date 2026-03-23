@@ -11,7 +11,7 @@ export async function GET() {
     }
 
     const result = await db.execute({
-      sql: "SELECT persistent_interval, notification_sound, notification_vibration, sound_low, sound_medium, sound_high FROM users WHERE id = ?",
+      sql: "SELECT persistent_interval, notification_sound, notification_vibration, sound_low, sound_medium, sound_high, is_public FROM users WHERE id = ?",
       args: [session.user.id],
     });
 
@@ -29,6 +29,7 @@ export async function GET() {
         sound_low: user.sound_low || "default",
         sound_medium: user.sound_medium || "default",
         sound_high: user.sound_high || "default",
+        is_public: user.is_public !== 0,
       },
     });
   } catch (error) {
@@ -56,6 +57,7 @@ export async function PATCH(request: NextRequest) {
       sound_low,
       sound_medium,
       sound_high,
+      is_public,
     } = body;
 
     const updates: string[] = ["updated_at = ?"];
@@ -89,6 +91,11 @@ export async function PATCH(request: NextRequest) {
     if (sound_high !== undefined) {
       updates.push("sound_high = ?");
       args.push(sound_high);
+    }
+
+    if (is_public !== undefined) {
+      updates.push("is_public = ?");
+      args.push(is_public ? 1 : 0);
     }
 
     args.push(session.user.id);

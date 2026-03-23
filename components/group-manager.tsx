@@ -26,6 +26,8 @@ import {
   Link as LinkIcon,
   PlusCircle,
   ChevronRight,
+  Settings as SettingsIcon,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
@@ -45,6 +47,11 @@ export function GroupManager({ userId }: { userId: string }) {
   const [showJoinDialog, setShowJoinDialog] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showMembersDialog, setShowMembersDialog] = useState(false);
+  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
+  const [isUpdatingGroup, setIsUpdatingGroup] = useState(false);
+  const [isDeletingGroup, setIsDeletingGroup] = useState(false);
+  const [editGroupName, setEditGroupName] = useState("");
+  const [editGroupPassword, setEditGroupPassword] = useState("");
 
   const { data: groupsData, mutate: mutateGroups } = useSWR(
     "/api/groups",
@@ -57,7 +64,9 @@ export function GroupManager({ userId }: { userId: string }) {
 
   const groups = groupsData?.data ?? [];
   const groupTasks = groupTasksData?.data ?? [];
-  const activeGroup = activeGroupId ? groups.find((g: any) => g.id === activeGroupId) : null;
+  const activeGroup = activeGroupId
+    ? groups.find((g: any) => g.id === activeGroupId)
+    : null;
 
   async function handleCreateGroup(e: React.FormEvent) {
     e.preventDefault();
@@ -110,6 +119,57 @@ export function GroupManager({ userId }: { userId: string }) {
       toast.error("Erro na conexão");
     } finally {
       setIsJoining(false);
+    }
+  }
+
+  async function handleUpdateGroup(e: React.FormEvent) {
+    e.preventDefault();
+    if (!activeGroupId) return;
+    setIsUpdatingGroup(true);
+    try {
+      const res = await fetch(`/api/groups/${activeGroupId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: editGroupName,
+          password: editGroupPassword || undefined,
+        }),
+      });
+      if (res.ok) {
+        toast.success("Grupo atualizado!");
+        setShowSettingsDialog(false);
+        setEditGroupPassword("");
+        mutateGroups();
+      }
+    } catch {
+      toast.error("Erro ao atualizar grupo");
+    } finally {
+      setIsUpdatingGroup(false);
+    }
+  }
+
+  async function handleDeleteGroup() {
+    if (
+      !activeGroupId ||
+      !confirm(
+        "Tem certeza que deseja excluir este grupo? Todas as tarefas serão desvinculadas.",
+      )
+    )
+      return;
+    setIsDeletingGroup(true);
+    try {
+      const res = await fetch(`/api/groups/${activeGroupId}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        toast.success("Grupo excluído!");
+        setActiveGroupId(null);
+        mutateGroups();
+      }
+    } catch {
+      toast.error("Erro ao excluir grupo");
+    } finally {
+      setIsDeletingGroup(false);
     }
   }
 
@@ -270,14 +330,27 @@ export function GroupManager({ userId }: { userId: string }) {
                     Membros
                   </Button>
                   {activeGroup?.role === "admin" && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => copyInviteLink(activeGroup.invite_token)}
-                    >
-                      <LinkIcon className="w-3 h-3 mr-2" />
-                      Convite
-                    </Button>
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setEditGroupName(activeGroup.name);
+                          setShowSettingsDialog(true);
+                        }}
+                      >
+                        <SettingsIcon className="w-3 h-3 mr-2" />
+                        Ajustes
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => copyInviteLink(activeGroup.invite_token)}
+                      >
+                        <LinkIcon className="w-3 h-3 mr-2" />
+                        Convite
+                      </Button>
+                    </>
                   )}
                 </div>
               </div>
@@ -351,6 +424,62 @@ export function GroupManager({ userId }: { userId: string }) {
           onOpenChange={setShowMembersDialog}
         />
       )}
+
+      {/* Dialog para configurações do grupo */}
+      <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Configurações do Grupo</DialogTitle>
+            <DialogDescription>
+              Edite o nome ou a senha de acesso do grupo.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleUpdateGroup} className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Nome do Grupo</label>
+              <Input
+                value={editGroupName}
+                onChange={(e) => setEditGroupName(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-muted-foreground">
+                Nova Senha (opcional)
+              </label>
+              <Input
+                type="password"
+                value={editGroupPassword}
+                onChange={(e) => setEditGroupPassword(e.target.value)}
+                placeholder="Deixe em branco para manter a atual"
+              />
+            </div>
+            <div className="flex flex-col gap-3 pt-4">
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={isUpdatingGroup}
+              >
+                {isUpdatingGroup ? (
+                  <Spinner className="mr-2" />
+                ) : (
+                  "Salvar Alterações"
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                className="w-full"
+                onClick={handleDeleteGroup}
+                disabled={isDeletingGroup}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Excluir Grupo
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

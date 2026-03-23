@@ -267,6 +267,26 @@ async function migrate() {
       if (!e.message.includes("duplicate column name")) throw e;
     }
 
+    // 11. Colunas extras de privacidade e amizade
+    console.log("\nIniciando migração de Privacidade e Amizade...");
+    try {
+      await client.execute(
+        "ALTER TABLE users ADD COLUMN is_public INTEGER DEFAULT 1",
+      );
+      console.log('✓ Coluna "is_public" adicionada à tabela users');
+    } catch (e: any) {
+      if (!e.message.includes("duplicate column name")) throw e;
+    }
+
+    try {
+      await client.execute(
+        "ALTER TABLE friendships ADD COLUMN blocked_by TEXT REFERENCES users(id) ON DELETE SET NULL",
+      );
+      console.log('✓ Coluna "blocked_by" adicionada à tabela friendships');
+    } catch (e: any) {
+      if (!e.message.includes("duplicate column name")) throw e;
+    }
+
     console.log("\n✅ Migrações concluídas com sucesso!");
   } catch (error) {
     console.error("Erro durante a migração:", error);

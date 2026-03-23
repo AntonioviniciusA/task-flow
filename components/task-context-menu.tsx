@@ -33,7 +33,6 @@ interface TaskContextMenuProps {
   onShare: (mode: "copy" | "sync") => void;
   onToggleStatus: () => void;
   onDelete: () => void;
-  onMoveToGroup: () => void;
 }
 
 export function TaskContextMenu({
@@ -45,7 +44,6 @@ export function TaskContextMenu({
   onShare,
   onToggleStatus,
   onDelete,
-  onMoveToGroup,
 }: TaskContextMenuProps) {
   return (
     <DropdownMenu>
@@ -58,11 +56,6 @@ export function TaskContextMenu({
         <DropdownMenuItem onClick={onEdit} disabled={!canEdit}>
           <Edit className="h-4 w-4 mr-2" />
           Editar
-        </DropdownMenuItem>
-
-        <DropdownMenuItem onClick={onMoveToGroup} disabled={!canEdit}>
-          <UsersIcon className="h-4 w-4 mr-2" />
-          Vincular ao Grupo
         </DropdownMenuItem>
 
         <DropdownMenuSeparator />

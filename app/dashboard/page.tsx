@@ -2,7 +2,6 @@ import { Suspense } from "react";
 import { TaskList } from "@/components/task-list";
 import { TaskListSkeleton } from "@/components/task-list-skeleton";
 import { CreateTaskButton } from "@/components/create-task-button";
-import { JoinTaskButton } from "@/components/join-task-button";
 import { NotificationBanner } from "@/components/notification-banner";
 import { AiTaskInput } from "@/components/ai-task-input";
 import { GamificationSystem } from "@/components/gamification-system";
@@ -28,7 +27,6 @@ export default async function DashboardPage() {
         </div>
         <div className="flex gap-2 shrink-0">
           <ImportScheduleButton />
-          <JoinTaskButton />
           <CreateTaskButton />
         </div>
       </div>

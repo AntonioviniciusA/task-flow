@@ -34,6 +34,9 @@ import {
   Sun,
   Monitor,
   Music,
+  User as UserIcon,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import type { Device } from "@/lib/types";
 import { Input } from "@/components/ui/input";
@@ -65,6 +68,7 @@ export default function SettingsPage() {
   const [soundLow, setSoundLow] = useState("default");
   const [soundMedium, setSoundMedium] = useState("default");
   const [soundHigh, setSoundHigh] = useState("default");
+  const [isPublicProfile, setIsPublicProfile] = useState(true);
 
   const [isInstallable, setIsInstallable] = useState(false);
   const [deferredPrompt, setDeferredPrompt] =
@@ -84,6 +88,7 @@ export default function SettingsPage() {
             setSoundLow(result.data.sound_low || "default");
             setSoundMedium(result.data.sound_medium || "default");
             setSoundHigh(result.data.sound_high || "default");
+            setIsPublicProfile(result.data.is_public !== false);
           }
         }
       } catch (error) {
@@ -119,6 +124,7 @@ export default function SettingsPage() {
     if (key === "sound_low") setSoundLow(String(value));
     if (key === "sound_medium") setSoundMedium(String(value));
     if (key === "sound_high") setSoundHigh(String(value));
+    if (key === "is_public") setIsPublicProfile(Boolean(value));
 
     try {
       const response = await fetch("/api/settings/notifications", {
@@ -152,6 +158,13 @@ export default function SettingsPage() {
   }
 
   async function handleRemoveDevice(endpoint: string) {
+    if (
+      !confirm(
+        "Tem certeza que deseja remover este dispositivo? As notificações push deixarão de funcionar nele.",
+      )
+    )
+      return;
+
     try {
       const response = await fetch(
         `/api/devices?endpoint=${encodeURIComponent(endpoint)}`,
@@ -488,6 +501,44 @@ export default function SettingsPage() {
                   </SelectItem>
                 </SelectContent>
               </Select>
+            </Field>
+          </FieldGroup>
+        </CardContent>
+      </Card>
+
+      {/* Privacidade e Perfil */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <UserIcon className="w-5 h-5" />
+            Privacidade e Perfil
+          </CardTitle>
+          <CardDescription>
+            Controle quem pode ver seu progresso
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <FieldGroup>
+            <Field className="flex items-center justify-between">
+              <div>
+                <FieldLabel className="mb-0 flex items-center gap-2">
+                  {isPublicProfile ? (
+                    <Eye className="w-4 h-4 text-primary" />
+                  ) : (
+                    <EyeOff className="w-4 h-4 text-muted-foreground" />
+                  )}
+                  Perfil Público
+                </FieldLabel>
+                <p className="text-xs text-muted-foreground">
+                  {isPublicProfile
+                    ? "Seu perfil aparece no ranking global"
+                    : "Seu perfil está oculto no ranking"}
+                </p>
+              </div>
+              <Switch
+                checked={isPublicProfile}
+                onCheckedChange={(v) => updateSetting("is_public", v)}
+              />
             </Field>
           </FieldGroup>
         </CardContent>

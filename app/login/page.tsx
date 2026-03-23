@@ -1,45 +1,60 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import { signIn } from 'next-auth/react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { Field, FieldLabel, FieldError, FieldGroup } from '@/components/ui/field'
-import { Spinner } from '@/components/ui/spinner'
-import { CheckSquare, Mail, Lock } from 'lucide-react'
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { signIn } from "next-auth/react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Field,
+  FieldLabel,
+  FieldError,
+  FieldGroup,
+} from "@/components/ui/field";
+import { Spinner } from "@/components/ui/spinner";
+import { Checkbox } from "@/components/ui/checkbox";
+import { CheckSquare, Mail, Lock, Info } from "lucide-react";
 
 export default function LoginPage() {
-  const router = useRouter()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(true);
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setIsLoading(true)
-    setError('')
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
 
     try {
-      const result = await signIn('credentials', {
+      const result = await signIn("credentials", {
         email,
         password,
         redirect: false,
-      })
+        callbackUrl: "/dashboard",
+      });
 
       if (result?.error) {
-        setError('Email ou senha inválidos')
+        setError("Email ou senha inválidos");
       } else {
-        router.push('/dashboard')
-        router.refresh()
+        router.push("/dashboard");
+        router.refresh();
       }
     } catch {
-      setError('Erro ao fazer login. Tente novamente.')
+      setError("Erro ao fazer login. Tente novamente.");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
   }
 
@@ -56,6 +71,19 @@ export default function LoginPage() {
           <CardDescription>
             Acesse sua conta para gerenciar suas tarefas
           </CardDescription>
+          <div className="flex justify-center mt-2">
+            <Button
+              asChild
+              variant="link"
+              size="sm"
+              className="text-primary text-xs"
+            >
+              <Link href="/how-to-use" className="flex items-center gap-1">
+                <Info className="w-3 h-3" />
+                Como usar o No Time?
+              </Link>
+            </Button>
+          </div>
         </CardHeader>
 
         <form onSubmit={handleSubmit}>
@@ -95,6 +123,23 @@ export default function LoginPage() {
                 </div>
               </Field>
 
+              <div className="flex items-center space-x-2 py-1">
+                <Checkbox
+                  id="rememberMe"
+                  checked={rememberMe}
+                  onCheckedChange={(checked) =>
+                    setRememberMe(checked as boolean)
+                  }
+                  disabled={isLoading}
+                />
+                <label
+                  htmlFor="rememberMe"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                >
+                  Lembrar acesso
+                </label>
+              </div>
+
               {error && (
                 <FieldError className="text-destructive text-sm">
                   {error}
@@ -111,13 +156,16 @@ export default function LoginPage() {
                   Entrando...
                 </>
               ) : (
-                'Entrar'
+                "Entrar"
               )}
             </Button>
 
             <p className="text-sm text-muted-foreground text-center">
-              Ainda no tem uma conta?{' '}
-              <Link href="/register" className="text-primary hover:underline font-medium">
+              Ainda no tem uma conta?{" "}
+              <Link
+                href="/register"
+                className="text-primary hover:underline font-medium"
+              >
                 Criar conta
               </Link>
             </p>
@@ -125,5 +173,5 @@ export default function LoginPage() {
         </form>
       </Card>
     </main>
-  )
+  );
 }

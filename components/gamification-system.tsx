@@ -23,7 +23,16 @@ import {
   UserPlus,
   Users as UsersIcon,
   X,
+  MoreVertical,
+  UserX,
+  ShieldAlert,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -72,8 +81,11 @@ export function GamificationSystem() {
 
   async function handleFriendAction(
     friendId: string,
-    action: "accept" | "reject",
+    action: "accept" | "reject" | "block" | "unblock" | "delete",
   ) {
+    if (action === "delete" && !confirm("Tem certeza que deseja excluir este amigo?")) return;
+    if (action === "block" && !confirm("Tem certeza que deseja bloquear este amigo?")) return;
+
     try {
       const res = await fetch("/api/friends", {
         method: "PATCH",
@@ -81,11 +93,19 @@ export function GamificationSystem() {
         body: JSON.stringify({ friendId, action }),
       });
       if (res.ok) {
-        toast.success(
-          action === "accept" ? "Amizade aceita!" : "Solicitação removida",
-        );
+        const messages: Record<string, string> = {
+          accept: "Amizade aceita!",
+          reject: "Solicitação removida",
+          block: "Amigo bloqueado",
+          unblock: "Amigo desbloqueado",
+          delete: "Amizade removida",
+        };
+        toast.success(messages[action] || "Sucesso!");
         mutateFriends();
         mutateFriendsRanking();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Erro ao processar");
       }
     } catch {
       toast.error("Erro ao processar");
@@ -216,7 +236,7 @@ export function GamificationSystem() {
                   friends.map((friend: any) => (
                     <div
                       key={friend.id}
-                      className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors"
+                      className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors group"
                     >
                       <Avatar className="h-8 w-8">
                         <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
@@ -224,8 +244,13 @@ export function GamificationSystem() {
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium truncate">
+                        <p className="text-xs font-medium truncate flex items-center gap-2">
                           {friend.name}
+                          {friend.friendship_status === "blocked" && (
+                            <Badge variant="destructive" className="text-[8px] h-3.5 px-1">
+                              Bloqueado
+                            </Badge>
+                          )}
                         </p>
                         <div className="flex items-center gap-2">
                           <Badge
@@ -239,6 +264,31 @@ export function GamificationSystem() {
                           </span>
                         </div>
                       </div>
+
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <MoreVertical className="h-3.5 w-3.5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {friend.friendship_status === "blocked" ? (
+                            <DropdownMenuItem onClick={() => handleFriendAction(friend.id, "unblock")}>
+                              <Check className="h-4 w-4 mr-2" />
+                              Desbloquear
+                            </DropdownMenuItem>
+                          ) : (
+                            <DropdownMenuItem onClick={() => handleFriendAction(friend.id, "block")} className="text-destructive">
+                              <ShieldAlert className="h-4 w-4 mr-2" />
+                              Bloquear
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem onClick={() => handleFriendAction(friend.id, "delete")} className="text-destructive">
+                            <UserX className="h-4 w-4 mr-2" />
+                            Excluir Amigo
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   ))
                 )}

@@ -42,7 +42,6 @@ import {
 } from "lucide-react";
 import { EditTaskDialog } from "./edit-task-dialog";
 import { TaskContextMenu } from "./task-context-menu";
-import { MoveToGroupDialog } from "./move-to-group-dialog";
 
 interface TaskCardProps {
   task: Task;
@@ -86,44 +85,14 @@ export function TaskCard({ task, onUpdate }: TaskCardProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
-  const [showMoveDialog, setShowMoveDialog] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
-
-  const { data: groupsData } = useSWR("/api/groups", fetcher);
-  const groups = groupsData?.data ?? [];
 
   const isCompleted = task.status === "completed";
   const priority = priorityConfig[task.priority];
   const isGroupTask = !!task.group_id;
   const isAdmin = task.user_group_role === "admin";
   const canEdit = !isGroupTask || isAdmin;
-
-  async function handleMoveToGroup(groupId: string | null) {
-    setIsUpdating(true);
-    try {
-      const response = await fetch(`/api/tasks/${task.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ group_id: groupId }),
-      });
-
-      if (response.ok) {
-        toast.success(
-          groupId
-            ? "Tarefa movida para o grupo!"
-            : "Tarefa movida para pessoal",
-        );
-        onUpdate();
-      } else {
-        toast.error("Erro ao mover tarefa");
-      }
-    } catch {
-      toast.error("Erro ao mover tarefa");
-    } finally {
-      setIsUpdating(false);
-    }
-  }
 
   async function handleComplete() {
     setIsUpdating(true);
@@ -138,10 +107,10 @@ export function TaskCard({ task, onUpdate }: TaskCardProps) {
         toast.success("Tarefa concluída!");
         onUpdate();
       } else {
-        toast.error("Erro ao atualizar tarefa");
+        toast.error("Erro ao concluir tarefa");
       }
     } catch {
-      toast.error("Erro ao atualizar tarefa");
+      toast.error("Erro ao concluir tarefa");
     } finally {
       setIsUpdating(false);
     }
@@ -157,7 +126,7 @@ export function TaskCard({ task, onUpdate }: TaskCardProps) {
       });
 
       if (response.ok) {
-        toast.success("Tarefa reaberta");
+        toast.success("Tarefa reaberta!");
         onUpdate();
       } else {
         toast.error("Erro ao reabrir tarefa");
@@ -170,6 +139,8 @@ export function TaskCard({ task, onUpdate }: TaskCardProps) {
   }
 
   async function handleDelete() {
+    if (!confirm("Tem certeza que deseja apagar esta tarefa? Esta ação não pode ser desfeita.")) return;
+    
     setIsDeleting(true);
     try {
       const response = await fetch(`/api/tasks/${task.id}`, {
@@ -320,7 +291,6 @@ export function TaskCard({ task, onUpdate }: TaskCardProps) {
               onShare={handleShare}
               onToggleStatus={isCompleted ? handleReopen : handleComplete}
               onDelete={() => setShowDeleteDialog(true)}
-              onMoveToGroup={() => setShowMoveDialog(true)}
             />
           </div>
         </CardHeader>
@@ -415,18 +385,6 @@ export function TaskCard({ task, onUpdate }: TaskCardProps) {
         open={showEditDialog}
         onOpenChange={setShowEditDialog}
         onUpdate={onUpdate}
-      />
-
-      <MoveToGroupDialog
-        task={task}
-        groups={groups}
-        open={showMoveDialog}
-        onOpenChange={setShowMoveDialog}
-        onMove={(groupId) => {
-          handleMoveToGroup(groupId);
-          setShowMoveDialog(false);
-        }}
-        isLoading={isUpdating}
       />
     </>
   );

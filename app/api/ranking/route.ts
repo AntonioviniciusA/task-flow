@@ -27,16 +27,17 @@ export async function GET(request: Request) {
           u.points, 
           u.level
         FROM users u
-        WHERE u.id = ? 
+        WHERE (u.id = ? 
         OR u.id IN (
           SELECT user_id1 FROM friendships WHERE user_id2 = ? AND status = 'accepted'
           UNION
           SELECT user_id2 FROM friendships WHERE user_id1 = ? AND status = 'accepted'
-        )
+        ))
+        AND (u.is_public != 0 OR u.id = ?)
         ORDER BY u.points DESC
         LIMIT 10
       `;
-      args = [session.user.id, session.user.id, session.user.id];
+      args = [session.user.id, session.user.id, session.user.id, session.user.id];
     } else {
       // Ranking global
       sql = `
@@ -49,9 +50,11 @@ export async function GET(request: Request) {
           points, 
           level
         FROM users
+        WHERE is_public != 0 OR id = ?
         ORDER BY points DESC
         LIMIT 10
       `;
+      args = [session.user.id];
     }
 
     const result = await db.execute({ sql, args });

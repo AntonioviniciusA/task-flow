@@ -18,7 +18,7 @@ import {
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Field, FieldLabel, FieldError, FieldGroup } from '@/components/ui/field'
 import { Spinner } from '@/components/ui/spinner'
-import { CheckSquare, Mail, Lock, User } from 'lucide-react'
+import { CheckSquare, Mail, Lock, User, Info } from 'lucide-react'
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -45,6 +45,14 @@ export default function RegisterPage() {
       setError('A senha deve ter no mínimo 8 caracteres')
       setIsLoading(false)
       return
+    }
+
+    const hasNumber = /\d/.test(password);
+    const hasLetter = /[a-zA-Z]/.test(password);
+    if (!hasNumber || !hasLetter) {
+      setError('A senha deve conter pelo menos uma letra e um número');
+      setIsLoading(false);
+      return;
     }
 
     if (!termsAccepted) {
@@ -98,8 +106,16 @@ export default function RegisterPage() {
           </div>
           <CardTitle className="text-2xl font-bold">Criar Conta</CardTitle>
           <CardDescription>
-            Crie sua conta para começar a gerenciar suas tarefas
+            Junte-se ao No Time para organizar suas tarefas
           </CardDescription>
+          <div className="flex justify-center mt-2">
+            <Button asChild variant="link" size="sm" className="text-primary text-xs">
+              <Link href="/how-to-use" className="flex items-center gap-1">
+                <Info className="w-3 h-3" />
+                Como usar o No Time?
+              </Link>
+            </Button>
+          </div>
         </CardHeader>
 
         <form onSubmit={handleSubmit}>

@@ -287,6 +287,54 @@ async function migrate() {
       if (!e.message.includes("duplicate column name")) throw e;
     }
 
+    // 12. Tabelas para QR Code Dinâmico e Tracking
+    console.log("\nIniciando migração de QR Codes e Tracking...");
+    try {
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS dynamic_qrs (
+          id TEXT PRIMARY KEY,
+          slug TEXT UNIQUE NOT NULL,
+          target_url TEXT NOT NULL,
+          description TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      console.log('✓ Tabela "dynamic_qrs" criada');
+    } catch (e) {
+      console.error("Erro ao criar tabela dynamic_qrs:", e);
+    }
+
+    try {
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS qr_access_logs (
+          id TEXT PRIMARY KEY,
+          qr_id TEXT REFERENCES dynamic_qrs(id) ON DELETE CASCADE,
+          accessed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          user_agent TEXT,
+          ip_address TEXT
+        )
+      `);
+      console.log('✓ Tabela "qr_access_logs" criada');
+    } catch (e) {
+      console.error("Erro ao criar tabela qr_access_logs:", e);
+    }
+
+    // Inserir QR inicial para /first-qr
+    try {
+      await client.execute({
+        sql: "INSERT OR IGNORE INTO dynamic_qrs (id, slug, target_url, description) VALUES (?, ?, ?, ?)",
+        args: [
+          "initial-onboarding",
+          "boas-vindas",
+          "/first-qr",
+          "QR Code inicial de boas-vindas para novos usuários",
+        ],
+      });
+      console.log('✓ QR Code "boas-vindas" inserido');
+    } catch (e) {
+      console.error("Erro ao inserir QR code inicial:", e);
+    }
+
     console.log("\n✅ Migrações concluídas com sucesso!");
   } catch (error) {
     console.error("Erro durante a migração:", error);

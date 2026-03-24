@@ -132,3 +132,5 @@ CREATE TABLE IF NOT EXISTS sync_queue (
 
 CREATE INDEX IF NOT EXISTS idx_sync_queue_user ON sync_queue(user_id);
 CREATE INDEX IF NOT EXISTS idx_sync_queue_pending ON sync_queue(synced_at) WHERE synced_at IS NULL;
+CREATE INDEX idx_tasks_notifications 
+ON tasks (executed, notification_enabled, scheduled_time);

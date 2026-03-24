@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import FooterAd from "@/components/footer-ad";
 import "./globals.css";
 import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
@@ -64,6 +65,7 @@ export default function RootLayout({
           strategy="afterInteractive"
         />
         <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );

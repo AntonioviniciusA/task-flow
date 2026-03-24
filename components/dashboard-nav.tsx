@@ -56,7 +56,11 @@ export function DashboardNav({ user }: DashboardNavProps) {
           {/* Logo */}
           <Link href="/dashboard" className="flex items-center gap-2">
             <div className="flex items-center justify-center w-10 h-10 rounded-xl overflow-hidden shadow-sm">
-              <img src="/icone-notime.png" alt="No Time Logo" className="w-full h-full object-cover" />
+              <img
+                src="/icone-notime.png"
+                alt="No Time Logo"
+                className="w-full h-full object-cover"
+              />
             </div>
             <div className="flex flex-col">
               <span className="font-bold text-foreground leading-tight tracking-tight">
@@ -69,7 +73,7 @@ export function DashboardNav({ user }: DashboardNavProps) {
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-1">
+          {/* <nav className="hidden md:flex items-center gap-1">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href;
@@ -89,7 +93,7 @@ export function DashboardNav({ user }: DashboardNavProps) {
                 </Link>
               );
             })}
-          </nav>
+          </nav> */}
 
           {/* User Menu */}
           <div className="flex items-center gap-2">
@@ -139,7 +143,7 @@ export function DashboardNav({ user }: DashboardNavProps) {
             </DropdownMenu>
 
             {/* Mobile menu button */}
-            <Button
+            {/* <Button
               variant="ghost"
               size="icon"
               className="md:hidden"
@@ -150,11 +154,11 @@ export function DashboardNav({ user }: DashboardNavProps) {
               ) : (
                 <Menu className="w-5 h-5" />
               )}
-            </Button>
+            </Button> */}
           </div>
         </div>
 
-        {/* Mobile Navigation */}
+        {/* Mobile Navigation
         {mobileMenuOpen && (
           <nav className="md:hidden py-4 border-t border-border">
             <div className="flex flex-col gap-1">
@@ -180,7 +184,7 @@ export function DashboardNav({ user }: DashboardNavProps) {
               })}
             </div>
           </nav>
-        )}
+        )} */}
       </div>
     </header>
   );

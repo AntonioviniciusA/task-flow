@@ -56,3 +56,9 @@ Ideal para alunos da Católica (UCB) que desejam transformar seu quadro de horá
 
 ## 🛠️ Suporte e Dúvidas
 Para dúvidas técnicas ou sugestões, entre em contato com o administrador do sistema.
+
+## License
+
+This project is proprietary and not open source.
+
+All rights reserved.

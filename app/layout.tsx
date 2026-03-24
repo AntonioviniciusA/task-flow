@@ -4,7 +4,7 @@ import Script from "next/script";
 import { ThemeProvider } from "@/components/theme-provider";
 import FooterAd from "@/components/footer-ad";
 import "./globals.css";
-
+import { Analytics } from "@vercel/analytics/next";
 const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
@@ -63,6 +63,7 @@ export default function RootLayout({
           crossOrigin="anonymous"
           strategy="afterInteractive"
         />
+        <Analytics />
       </body>
     </html>
   );
